@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 from bottle import HTTPResponse, route, run, request, template
-import dns.resolver, ipaddress, socket, pyasn, json, os, re
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+import threading, json, re
 
 requests = {}
 mutex = threading.Lock()
@@ -33,13 +33,11 @@ def index(token=''):
 
 @route('/<request>', method='GET')
 def index(request=''):
-        if len(request) > 100:
-            return HTTPResponse(status=414, body={"data":"way to fucking long"})
+        if len(request) > 100: return HTTPResponse(status=414, body={"data":"way to fucking long"})
         request = request.replace("/","")
-        print("request",request)
         ipv4 = re.findall("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$",request, re.MULTILINE)
         if ipv4:
-            if not ipv4[0] in request: 
+            if not ipv4[0] in requests: 
                 mutex.acquire()
                 requests[ipv4[0]] = {"status":"accepted","location":{"continent":""}}
                 mutex.release()
