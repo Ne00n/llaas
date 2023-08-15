@@ -5,11 +5,10 @@ from pathlib import Path
 
 requests = {}
 mutex = threading.Lock()
-@route('/get/<token>', method='GET')
+@route('/job/<token>', method='GET')
 def index(token=''):
     token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL)
-    if not token: return HTTPResponse(status=400, body={"error":"Invalid Token"})
-    if not token in config['workers']:
+    if not token or not token in config['workers']: return HTTPResponse(status=400, body={"error":"Invalid Token"})
     mutex.acquire()
     response = {}
     for ip, request in requests.items():
@@ -19,6 +18,17 @@ def index(token=''):
             break
     mutex.release()
     return HTTPResponse(status=200, body={response})
+
+@route('/job/<token>', method='POST')
+def index(token=''):
+    token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL)
+    if not token or not token in config['workers']: return HTTPResponse(status=400, body={"error":"Invalid Token"})
+    payload = json.load(request.body)
+    mutex.acquire()
+    ip = list(payload.keys())[0]
+    requests[ip] = payload
+    mutex.release()
+    return HTTPResponse(status=200, body={})
 
 @route('/<request>', method='GET')
 def index(request=''):
