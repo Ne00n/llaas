@@ -13,7 +13,7 @@ def error(run):
         exit()
     time.sleep(2)
 
-file = f"{config['api']}"   
+url = f"{config['api']}/job/{config['token']}"   
 
 ctx = ssl.create_default_context()
 #ctx.check_hostname = False
@@ -21,8 +21,8 @@ ctx = ssl.create_default_context()
 
 for run in range(4):
     try:
-        print(f"Fetching {file}")
-        request = urllib.request.urlopen(file, timeout=3, context=ctx)
+        print(f"Fetching {url}")
+        request = urllib.request.urlopen(url, timeout=3, context=ctx)
         if (request.getcode() == 200):
             raw = request.read().decode('utf-8')
             json = json.loads(raw)
@@ -33,3 +33,5 @@ for run in range(4):
     except Exception as e:
         print(f"Error {e}")
         error(run)
+
+print(json)
