@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import urllib.request, subprocess, json, time, ssl, sys, re, os
+import requests, subprocess, json, time, ssl, sys, re, os
 
 fullPath = os.path.realpath(__file__).replace("worker.py","")
 
@@ -13,7 +13,7 @@ def error(run):
         exit()
     time.sleep(2)
 
-url = f"{config['api']}/job/{config['token']}"   
+url = f"{config['api']}/job"   
 
 ctx = ssl.create_default_context()
 #ctx.check_hostname = False
@@ -21,11 +21,11 @@ ctx = ssl.create_default_context()
 
 for run in range(4):
     try:
-        print(f"Fetching {url}")
-        request = urllib.request.urlopen(url, timeout=3, context=ctx)
-        if (request.getcode() == 200):
-            raw = request.read().decode('utf-8')
-            json = json.loads(raw)
+        target = f"{url}/get"
+        print(f"Fetching {target}")
+        response = requests.post(target, data=json.dumps(config))
+        if (response.status_code == 200):
+            json = response.json()
             break
         else:
             print("Got non 200 response code")
@@ -35,18 +35,3 @@ for run in range(4):
         error(run)
 
 print(json)
-
-for run in range(4):
-    try:
-        print(f"Fetching {url}")
-        request = urllib.request.urlopen(url,data={""}, timeout=3, context=ctx)
-        if (request.getcode() == 200):
-            raw = request.read().decode('utf-8')
-            json = json.loads(raw)
-            break
-        else:
-            print("Got non 200 response code")
-            error(run)
-    except Exception as e:
-        print(f"Error {e}")
-        error(run)

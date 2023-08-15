@@ -9,22 +9,20 @@ def validateToken(token=''):
     for name,details in config['workers'].items():
         if details['token'] == token: return True
 
-@route('/job/<token>', method='GET')
+@route('/job/get', method='POST')
 def index(token=''):
-    token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",token,re.MULTILINE | re.DOTALL)
+    payload = json.load(request.body)
+    print(payload)
+    token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL)
     if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
-    mutex.acquire()
-    response = {}
-    for ip, request in requests.items():
-        print(request)
-        if request["status"] == "accepted":
-            requests[ip]["status"] = "assigned"
-            response = requests[ip]
-            break
-    mutex.release()
-    return HTTPResponse(status=200, body=response)
+    worker = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
+    if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
+    print(payload['worker'])
+    ips = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet LIMIT 100"))
+    print(ips)
+    return HTTPResponse(status=200, body={"ips":ips})
 
-@route('/job/<token>', method='POST')
+@route('/job/deliver', method='POST')
 def index(token=''):
     token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",token,re.MULTILINE | re.DOTALL)
     if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
