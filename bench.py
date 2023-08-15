@@ -32,7 +32,7 @@ for i in range(concurrent):
     t.daemon = True
     t.start()
 try:
-    for run in range(10):
+    for run in range(1000):
         ip = ".".join(map(str, (random.randint(0, 255) 
                         for _ in range(4))))
         q.put(f"http://127.0.0.1:8080/{ip}")
