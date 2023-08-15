@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 from bottle import HTTPResponse, route, run, request, template
 import dns.resolver, ipaddress, socket, pyasn, json, os, re
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -47,7 +48,7 @@ def index(request=''):
             return HTTPResponse(status=400, body={"data":"no valid IPv4"})
 
 print("Loading config")
-with open('config.json') as f: config = json.load(f)
+with open('api.json') as f: config = json.load(f)
 print("Ready")
 
 run(host="::", port=8080, server='paste')
