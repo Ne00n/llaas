@@ -44,7 +44,6 @@ def index(request=''):
         if asndata[0] is None: return HTTPResponse(status=400, body={"data":"invalid IPv4"})
         connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True)
         response = list(connection.execute("SELECT * FROM requests WHERE subnet = ?",(asndata[1],)))
-        print(response)
         expiry = int(time.time()) + 60
         if not response:
             connection.execute(f"INSERT INTO requests VALUES ('{asndata[1]}','0','{expiry}')")
