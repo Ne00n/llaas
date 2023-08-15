@@ -1,11 +1,8 @@
 #!/usr/bin/python3
 from bottle import HTTPResponse, route, run, request, template
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+import json, pyasn, sqlite3, time, re
 from pathlib import Path
-import threading, json, re
-
-requests = {}
-mutex = threading.Lock()
 
 def validateToken(token=''):
     for name,details in config['workers'].items():
@@ -43,16 +40,29 @@ def index(request=''):
     request = request.replace("/","")
     ipv4 = re.findall("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$",request, re.MULTILINE)
     if ipv4:
-        if not ipv4[0] in requests: 
-            mutex.acquire()
-            requests[ipv4[0]] = {"status":"accepted","location":{"continent":""}}
-            mutex.release()
-        return HTTPResponse(status=200, body=requests[ipv4[0]])
+        asndata = asndb.lookup(ipv4[0])
+        if asndata[0] is None: return HTTPResponse(status=400, body={"data":"invalid IPv4"})
+        connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True)
+        response = list(connection.execute("SELECT * FROM requests WHERE subnet = ?",(asndata[1],)))
+        print(response)
+        expiry = int(time.time()) + 60
+        if not response:
+            connection.execute(f"INSERT INTO requests VALUES ('{asndata[1]}','0','{expiry}')")
+            connection.commit()
+            connection.close()
+            return HTTPResponse(status=200)
+        return HTTPResponse(status=200, body={"subnet":response[0][0]})
     else:
-        return HTTPResponse(status=400, body={"data":"no valid IPv4"})
+        return HTTPResponse(status=400, body={"data":"invalid IPv4"})
 
+print("Preparing sqlite3")
+connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True)
+connection.execute("""CREATE TABLE requests (subnet, status, expiry)""")
+connection.execute("""CREATE TABLE results (subnet, worker, latency, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
 print("Loading config")
 with open('api.json') as f: config = json.load(f)
+print("Loading pyasn")
+asndb = pyasn.pyasn('asn.dat')
 print("Ready")
 
 run(host="::", port=8080, server='paste')

@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 api.json
 worker.json
+rib.*
+asn.dat
 
 # C extensions
 *.so
