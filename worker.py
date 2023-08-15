@@ -35,3 +35,18 @@ for run in range(4):
         error(run)
 
 print(json)
+
+for run in range(4):
+    try:
+        print(f"Fetching {url}")
+        request = urllib.request.urlopen(url,data={""}, timeout=3, context=ctx)
+        if (request.getcode() == 200):
+            raw = request.read().decode('utf-8')
+            json = json.loads(raw)
+            break
+        else:
+            print("Got non 200 response code")
+            error(run)
+    except Exception as e:
+        print(f"Error {e}")
+        error(run)
