@@ -29,6 +29,7 @@ def call(url,payload):
 
 data = call(f"{config['api']}/job/get",config)
 print(f"Got {len(data['ips'])} IP's")
+if len(data['ips']) == 0: exit("Nothing todo")
 
 ips,mapping = [],{}
 for row in data['ips'][:100]: 
