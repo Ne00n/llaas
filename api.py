@@ -9,13 +9,17 @@ def validateToken(token=''):
     for name,details in config['workers'].items():
         if details['token'] == token: return True
 
+def validateWorker(worker=''):
+    for name,details in config['workers'].items():
+        if name == worker: return True
+
 @route('/job/get', method='POST')
 def index():
     payload = json.load(request.body)
     token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL)
     if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
-    worker = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
-    if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
+    worker = re.findall(r"^([A-Za-z0-9/.=+]{3,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
+    if not worker or not validateWorker(worker[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
     ips = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency = ?",(payload['worker'],"0",)))
     return HTTPResponse(status=200, body={"ips":ips})
 
@@ -25,7 +29,7 @@ def index():
     token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL)
     if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
     worker = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
-    if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
+    if not worker or not validateWorker(worker[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
     connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
     connection.execute('PRAGMA journal_mode=WAL;')
     connection.commit()

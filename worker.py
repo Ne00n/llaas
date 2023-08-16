@@ -21,7 +21,7 @@ def call(url,payload):
             if (response.status_code == 200):
                 return response.json()
             else:
-                print("Got non 200 response code")
+                print(f"Got {response.status_code} with {response.text}")
                 error(run)
         except Exception as e:
             print(f"Error {e}")
