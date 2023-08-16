@@ -10,27 +10,29 @@ def validateToken(token=''):
         if details['token'] == token: return True
 
 @route('/job/get', method='POST')
-def index(token=''):
+def index():
     payload = json.load(request.body)
-    print(payload)
     token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL)
     if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
     worker = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
     if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
-    print(payload['worker'])
-    ips = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet LIMIT 100"))
-    print(ips)
+    ips = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency = ?",(payload['worker'],"0",)))
     return HTTPResponse(status=200, body={"ips":ips})
 
 @route('/job/deliver', method='POST')
-def index(token=''):
-    token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",token,re.MULTILINE | re.DOTALL)
-    if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
+def index():
     payload = json.load(request.body)
-    mutex.acquire()
-    ip = list(payload.keys())[0]
-    requests[ip] = payload
-    mutex.release()
+    token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL)
+    if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
+    worker = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
+    if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
+    connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
+    connection.execute('PRAGMA journal_mode=WAL;')
+    connection.commit()
+    for subnet,details in payload['data'].items():
+        connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ?",(details['latency'],subnet,payload['worker'],))
+    connection.commit()
+    connection.close()
     return HTTPResponse(status=200, body={})
 
 @route('/<request>', method='GET')
@@ -48,6 +50,8 @@ def index(request=''):
         if not response:
             expiry = int(time.time()) + 60
             connection.execute(f"INSERT INTO requests VALUES ('{asndata[1]}','{ipv4[0]}','0','{expiry}')")
+            for worker,details in config['workers'].items():
+                connection.execute(f"INSERT INTO results VALUES ('{asndata[1]}','{worker}','0')")
             connection.commit()
         response = list(connection.execute("SELECT * FROM requests WHERE subnet = ?",(asndata[1],)))
         connection.close()
