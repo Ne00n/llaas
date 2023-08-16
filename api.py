@@ -57,7 +57,7 @@ def index(request=''):
             for worker,details in config['workers'].items():
                 connection.execute(f"INSERT INTO results VALUES ('{asndata[1]}','{worker}','0')")
             connection.commit()
-        response = list(connection.execute("SELECT * FROM requests WHERE subnet = ?",(asndata[1],)))
+            response = list(connection.execute("SELECT * FROM requests WHERE subnet = ?",(asndata[1],)))
         connection.close()
         return HTTPResponse(status=200, body={"subnet":response[0][0],"status":response[0][2]})
     else:
