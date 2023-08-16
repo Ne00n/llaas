@@ -50,6 +50,6 @@ for row in parsed:
     response["data"][subnet] = {"ip":currentIP,"latency":row[2]}
 
 for row in data['ips'][:100]:
-    response["data"][row[0]] = {"ip":row[1],"latency":False}
+    if not row[0] in response['data']: response["data"][row[0]] = {"ip":row[1],"latency":-1}
 
 data = call(f"{config['api']}/job/deliver",response)

@@ -20,7 +20,7 @@ def index():
     if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
     worker = re.findall(r"^([A-Za-z0-9/.=+]{3,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
     if not worker or not validateWorker(worker[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
-    ips = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency = ?",(payload['worker'],"0",)))
+    ips = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL",(payload['worker'],)))
     return HTTPResponse(status=200, body={"ips":ips})
 
 @route('/job/deliver', method='POST')
@@ -28,7 +28,7 @@ def index():
     payload = json.load(request.body)
     token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL)
     if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
-    worker = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
+    worker = re.findall(r"^([A-Za-z0-9/.=+]{3,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
     if not worker or not validateWorker(worker[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
     connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
     connection.execute('PRAGMA journal_mode=WAL;')
@@ -50,12 +50,12 @@ def index(request=''):
         connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
         connection.execute('PRAGMA journal_mode=WAL;')
         connection.commit()
-        response = list(connection.execute("SELECT * FROM requests WHERE subnet = ?",(asndata[1],)))
+        response = list(connection.execute("SELECT * FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ?",(asndata[1],)))
         if not response:
             expiry = int(time.time()) + 60
             connection.execute(f"INSERT INTO requests VALUES ('{asndata[1]}','{ipv4[0]}','0','{expiry}')")
             for worker,details in config['workers'].items():
-                connection.execute(f"INSERT INTO results VALUES ('{asndata[1]}','{worker}','0')")
+                connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
             connection.commit()
             response = list(connection.execute("SELECT * FROM requests WHERE subnet = ?",(asndata[1],)))
         connection.close()
@@ -66,7 +66,7 @@ def index(request=''):
 print("Preparing sqlite3")
 connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None)
 connection.execute("""CREATE TABLE requests (subnet, ip, status, expiry)""")
-connection.execute("""CREATE TABLE results (subnet, worker, latency, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
+connection.execute("""CREATE TABLE results (subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
 connection.execute('PRAGMA journal_mode=WAL;')
 connection.commit()
 print("Loading config")
