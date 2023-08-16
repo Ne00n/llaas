@@ -27,10 +27,6 @@ def call(url,payload):
             print(f"Error {e}")
             error(run)
 
-ctx = ssl.create_default_context()
-#ctx.check_hostname = False
-#ctx.verify_mode = ssl.CERT_NONE
-
 data = call(f"{config['api']}/job/get",config)
 print(f"Got {len(data['ips'])} IP's")
 
