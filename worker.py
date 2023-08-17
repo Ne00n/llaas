@@ -17,7 +17,7 @@ def call(url,payload):
     for run in range(4):
         try:
             print(f"Fetching {url}")
-            response = requests.post(url, data=json.dumps(payload))
+            response = requests.post(url, data=json.dumps(payload),timeout=(3, 3))
             if (response.status_code == 200):
                 return response.json()
             else:
