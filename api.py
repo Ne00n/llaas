@@ -18,7 +18,7 @@ def index():
     payload = json.load(request.body)
     if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
     ips = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL LIMIT 1000",(payload['worker'],)))
-    return HTTPResponse(status=200, body={"ips":ips})
+    return {"ips":ips}
 
 @route('/job/deliver', method='POST')
 def index():
