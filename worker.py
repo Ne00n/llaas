@@ -4,7 +4,7 @@ import requests, subprocess, json, time, ssl, sys, re, os
 fullPath = os.path.realpath(__file__).replace("worker.py","")
 
 print("Loading worker.json")
-with open(f"{fullPath}worker.json") as handle: config = json.loads(handle.read())
+with open(f"{fullPath}configs/worker.json") as handle: config = json.loads(handle.read())
 
 def error(run):
     print(f"Retrying {run+1} of 4")

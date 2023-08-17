@@ -1,10 +1,12 @@
 #!/usr/bin/python3
 from bottle import HTTPResponse, route, run, request, template
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-import json, pyasn, sqlite3, time, re
+import json, pyasn, sqlite3, time, re, os
 from pathlib import Path
 
+fullPath = os.path.realpath(__file__).replace("api.py","")
 inboundQueue = []
+
 def validateToken(token=''):
     for name,details in config['workers'].items():
         if details['token'] == token: return True
@@ -81,9 +83,9 @@ connection.execute("""CREATE TABLE results (subnet, worker, latency DECIMAL(3,2)
 connection.execute('PRAGMA journal_mode=WAL;')
 connection.commit()
 print("Loading config")
-with open('api.json') as f: config = json.load(f)
+with open(f"{fullPath}configs/api.json") as f: config = json.load(f)
 print("Loading pyasn")
-asndb = pyasn.pyasn('asn.dat')
+asndb = pyasn.pyasn(f"{fullPath}asn.dat")
 print("Preparing regex")
 ipRegEx = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
 print("Ready")
