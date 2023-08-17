@@ -50,9 +50,13 @@ def index(request=''):
         connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
         connection.execute('PRAGMA journal_mode=WAL;')
         connection.commit()
-        response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ?",(asndata[1],)))
+        response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ?",(asndata[1],)))
+        if response and int(time.time()) > int(response[0][4]):
+            connection.execute(f"DELETE FROM requests WHERE subnet = ?",(response[0][0],))
+            connection.commit()
         if not response:
-            expiry = int(time.time()) + 60
+            #set expiry to 6 hours
+            expiry = int(time.time()) + 21600
             connection.execute(f"INSERT INTO requests VALUES ('{asndata[1]}','{ipv4[0]}','0','{expiry}')")
             for worker,details in config['workers'].items():
                 connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
