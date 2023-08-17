@@ -20,7 +20,7 @@ def index():
     if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
     worker = re.findall(r"^([A-Za-z0-9/.=+]{3,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
     if not worker or not validateWorker(worker[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
-    ips = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL",(payload['worker'],)))
+    ips = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL LIMIT 1000",(payload['worker'],)))
     return HTTPResponse(status=200, body={"ips":ips})
 
 @route('/job/deliver', method='POST')
