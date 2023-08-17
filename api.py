@@ -57,7 +57,7 @@ def index(request=''):
         if not response:
             #set expiry to 6 hours
             expiry = int(time.time()) + 21600
-            connection.execute(f"INSERT INTO requests VALUES ('{asndata[1]}','{ipv4[0]}','0','{expiry}')")
+            connection.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (?,?,?)",(asndata[1],ipv4[0], expiry))
             for worker,details in config['workers'].items():
                 connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
             connection.commit()
