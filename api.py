@@ -54,6 +54,7 @@ def index(request=''):
         if response and int(time.time()) > int(response[0][4]):
             connection.execute(f"DELETE FROM requests WHERE subnet = ?",(response[0][0],))
             connection.commit()
+            response = {}
         if not response:
             #set expiry to 6 hours
             expiry = int(time.time()) + 21600
