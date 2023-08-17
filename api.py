@@ -10,7 +10,6 @@ def validate(payload):
     if not "token" in payload or "worker" in payload: return False
     if not re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL): return False
     if not re.findall(r"^([A-Za-z0-9.=+-]{3,50})$",payload['worker'],re.MULTILINE | re.DOTALL): return False
-    if not worker or not validateWorker(worker[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
     for worker,details in config['workers'].items():
         if worker == payload['worker'] and details['token'] == payload['token']: return True
 
