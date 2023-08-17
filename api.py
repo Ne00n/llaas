@@ -72,7 +72,7 @@ def index(request=''):
                 data = {}
                 break
             data[row[2]] = row[3]
-        return HTTPResponse(status=200, body={"subnet":response[0][0],"ip":response[0][1],"data":data})
+        return {"subnet":response[0][0],"ip":response[0][1],"data":data}
     else:
         return HTTPResponse(status=400, body={"data":"invalid IPv4"})
 
