@@ -1,0 +1,13 @@
+[Unit]
+Description=llaas service
+Wants=network-online.target
+After=network-online.target
+[Service]
+User=llaas
+Group=llaas
+Type=simple
+StandardOutput=null
+WorkingDirectory=/home/llaas
+ExecStart=/usr/bin/python3 api.py
+[Install]
+WantedBy=multi-user.target
