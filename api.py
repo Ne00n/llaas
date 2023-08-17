@@ -5,33 +5,26 @@ import json, pyasn, sqlite3, time, re, os
 from pathlib import Path
 
 fullPath = os.path.realpath(__file__).replace("api.py","")
-inboundQueue = []
 
-def validateToken(token=''):
-    for name,details in config['workers'].items():
-        if details['token'] == token: return True
-
-def validateWorker(worker=''):
-    for name,details in config['workers'].items():
-        if name == worker: return True
+def validate(payload):
+    if not "token" in payload or "worker" in payload: return False
+    if not re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL): return False
+    if not re.findall(r"^([A-Za-z0-9.=+-]{3,50})$",payload['worker'],re.MULTILINE | re.DOTALL): return False
+    if not worker or not validateWorker(worker[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
+    for worker,details in config['workers'].items():
+        if worker == payload['worker'] and details['token'] == payload['token']: return True
 
 @route('/job/get', method='POST')
 def index():
     payload = json.load(request.body)
-    token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL)
-    if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
-    worker = re.findall(r"^([A-Za-z0-9/.=+]{3,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
-    if not worker or not validateWorker(worker[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
+    if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
     ips = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL LIMIT 1000",(payload['worker'],)))
     return HTTPResponse(status=200, body={"ips":ips})
 
 @route('/job/deliver', method='POST')
 def index():
     payload = json.load(request.body)
-    token = re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL)
-    if not token or not validateToken(token[0]): return HTTPResponse(status=400, body={"error":"Invalid Token"})
-    worker = re.findall(r"^([A-Za-z0-9/.=+]{3,60})$",payload['worker'],re.MULTILINE | re.DOTALL)
-    if not worker or not validateWorker(worker[0]): return HTTPResponse(status=400, body={"error":"Invalid Worker"})
+    if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
     connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
     connection.execute('PRAGMA journal_mode=WAL;')
     connection.commit()
