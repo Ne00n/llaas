@@ -71,6 +71,7 @@ connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, 
 connection.execute("""CREATE TABLE requests (subnet, ip, expiry)""")
 connection.execute("""CREATE TABLE results (subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
 connection.execute('PRAGMA journal_mode=WAL;')
+connection.execute('PRAGMA foreign_keys = ON;')
 connection.commit()
 print("Loading config")
 with open(f"{fullPath}configs/api.json") as f: config = json.load(f)
