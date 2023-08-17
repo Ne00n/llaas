@@ -75,7 +75,7 @@ def index(request=''):
 
 print("Preparing sqlite3")
 connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None)
-connection.execute("""CREATE TABLE requests (subnet, ip, status, expiry)""")
+connection.execute("""CREATE TABLE requests (subnet, ip, expiry)""")
 connection.execute("""CREATE TABLE results (subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
 connection.execute('PRAGMA journal_mode=WAL;')
 connection.commit()
