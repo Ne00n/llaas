@@ -50,16 +50,22 @@ def index(request=''):
         connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
         connection.execute('PRAGMA journal_mode=WAL;')
         connection.commit()
-        response = list(connection.execute("SELECT * FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ?",(asndata[1],)))
+        response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ?",(asndata[1],)))
         if not response:
             expiry = int(time.time()) + 60
             connection.execute(f"INSERT INTO requests VALUES ('{asndata[1]}','{ipv4[0]}','0','{expiry}')")
             for worker,details in config['workers'].items():
                 connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
             connection.commit()
-            response = list(connection.execute("SELECT * FROM requests WHERE subnet = ?",(asndata[1],)))
+            response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ?",(asndata[1],)))
         connection.close()
-        return HTTPResponse(status=200, body={"subnet":response[0][0],"status":response[0][2]})
+        data = {}
+        for row in response:
+            if row[3] is None: 
+                data = {}
+                break
+            data[row[2]] = row[3]
+        return HTTPResponse(status=200, body={"subnet":response[0][0],"ip":response[0][1],"data":data})
     else:
         return HTTPResponse(status=400, body={"data":"invalid IPv4"})
 
