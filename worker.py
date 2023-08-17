@@ -27,29 +27,34 @@ def call(url,payload):
             print(f"Error {e}")
             error(run)
 
-data = call(f"{config['api']}/job/get",config)
-print(f"Got {len(data['ips'])} IP's")
-if len(data['ips']) == 0: exit("Nothing todo")
+done,start = 20,10
+for run in range(6):
+    runtime = done - start
+    time.sleep(10 - runtime)
+    start = time.perf_counter()
+    data = call(f"{config['api']}/job/get",config)
+    print(f"Got {len(data['ips'])} IP's")
+    if len(data['ips']) > 0:
+        ips,mapping = [],{}
+        for row in data['ips'][:100]: 
+            ips.append(row[1])
+            mapping[row[1]] = row[0]
 
-ips,mapping = [],{}
-for row in data['ips'][:100]: 
-    ips.append(row[1])
-    mapping[row[1]] = row[0]
+        fping = f"fping -c 2 "
+        fping += " ".join(ips)
 
-fping = f"fping -c 2 "
-fping += " ".join(ips)
+        p = subprocess.run(fping, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        parsed = re.findall("(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*?(min/avg/max) = [0-9.]+/([0-9.]+)",p.stderr.decode('utf-8'), re.MULTILINE)
 
-p = subprocess.run(fping, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-parsed = re.findall("(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*?(min/avg/max) = [0-9.]+/([0-9.]+)",p.stderr.decode('utf-8'), re.MULTILINE)
+        response = config
+        response["data"] = {}
+        for row in parsed:
+            currentIP = row[0]
+            subnet = mapping[currentIP]
+            response["data"][subnet] = {"ip":currentIP,"latency":row[2]}
 
-response = config
-response["data"] = {}
-for row in parsed:
-    currentIP = row[0]
-    subnet = mapping[currentIP]
-    response["data"][subnet] = {"ip":currentIP,"latency":row[2]}
+        for row in data['ips'][:100]:
+            if not row[0] in response['data']: response["data"][row[0]] = {"ip":row[1],"latency":-1}
 
-for row in data['ips'][:100]:
-    if not row[0] in response['data']: response["data"][row[0]] = {"ip":row[1],"latency":-1}
-
-data = call(f"{config['api']}/job/deliver",response)
+        data = call(f"{config['api']}/job/deliver",response)
+    done = time.perf_counter()
