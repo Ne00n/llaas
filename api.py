@@ -7,7 +7,7 @@ from pathlib import Path
 fullPath = os.path.realpath(__file__).replace("api.py","")
 
 def validate(payload):
-    if not "token" in payload or "worker" in payload: return False
+    if not "token" in payload or not "worker" in payload: return False
     if not re.findall(r"^([A-Za-z0-9/.=+]{30,60})$",payload['token'],re.MULTILINE | re.DOTALL): return False
     if not re.findall(r"^([A-Za-z0-9.=+-]{3,50})$",payload['worker'],re.MULTILINE | re.DOTALL): return False
     for worker,details in config['workers'].items():
