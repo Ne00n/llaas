@@ -52,7 +52,7 @@ def index(request=''):
         connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
         connection.execute('PRAGMA journal_mode=WAL;')
         connection.commit()
-        response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? SORT BY results.latency",(asndata[1],)))
+        response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.latency",(asndata[1],)))
         if response and int(time.time()) > int(response[0][4]):
             connection.execute(f"DELETE FROM requests WHERE subnet = ?",(response[0][0],))
             connection.commit()
