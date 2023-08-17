@@ -6,6 +6,6 @@ cd /home/
 git clone https://github.com/Ne00n/llaas.git
 cd llaas
 cp worker.example.json worker.json
-useradd llaas -r -d /home/llas -s /bin/bash
+useradd llaas -r -d /home/llaas -s /bin/bash
 chown -R llaas:llaas /home/llaas/
 crontab -u llaas -l 2>/dev/null | { cat; echo \\"* * * * *  /home/llaas/worker.py > /dev/null 2>&1\\"; } | crontab -u llaas -
