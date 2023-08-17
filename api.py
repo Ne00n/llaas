@@ -46,35 +46,33 @@ def index(request=''):
     if len(request) > 100: return HTTPResponse(status=414, body={"data":"way to fucking long"})
     request = request.replace("/","")
     ipv4 = ipRegEx.findall(request)
-    if ipv4:
-        asndata = asndb.lookup(ipv4[0])
-        if asndata[0] is None: return HTTPResponse(status=400, body={"data":"invalid IPv4"})
-        connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
-        connection.execute('PRAGMA journal_mode=WAL;')
+    if not ipv4: return HTTPResponse(status=400, body={"data":"invalid IPv4"})
+    asndata = asndb.lookup(ipv4[0])
+    if asndata[0] is None: return HTTPResponse(status=400, body={"data":"invalid IPv4"})
+    connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
+    connection.execute('PRAGMA journal_mode=WAL;')
+    connection.commit()
+    response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.latency",(asndata[1],)))
+    if response and int(time.time()) > int(response[0][4]):
+        connection.execute(f"DELETE FROM requests WHERE subnet = ?",(response[0][0],))
         connection.commit()
-        response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.latency",(asndata[1],)))
-        if response and int(time.time()) > int(response[0][4]):
-            connection.execute(f"DELETE FROM requests WHERE subnet = ?",(response[0][0],))
-            connection.commit()
-            response = {}
-        if not response:
-            #set expiry to 6 hours
-            expiry = int(time.time()) + 21600
-            connection.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (?,?,?)",(asndata[1],ipv4[0], expiry))
-            for worker,details in config['workers'].items():
-                connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
-            connection.commit()
-            response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ?",(asndata[1],)))
-        connection.close()
-        data = {}
-        for row in response:
-            if row[3] is None: 
-                data = {}
-                break
-            data[row[2]] = row[3]
-        return {"subnet":response[0][0],"ip":response[0][1],"data":data}
-    else:
-        return HTTPResponse(status=400, body={"data":"invalid IPv4"})
+        response = {}
+    if not response:
+        #set expiry to 6 hours
+        expiry = int(time.time()) + 21600
+        connection.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (?,?,?)",(asndata[1],ipv4[0], expiry))
+        for worker,details in config['workers'].items():
+            connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
+        connection.commit()
+        response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ?",(asndata[1],)))
+    connection.close()
+    data = {}
+    for row in response:
+        if row[3] is None: 
+            data = {}
+            break
+        data[row[2]] = row[3]
+    return {"subnet":response[0][0],"ip":response[0][1],"data":data}
 
 print("Preparing sqlite3")
 connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None)
