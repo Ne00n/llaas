@@ -35,8 +35,8 @@ while runtime < 57:
     if len(data['ips']) > 0:
         ips,mapping = [],{}
         for row in data['ips'][:100]: 
-            ips.append(row[1])
-            mapping[row[1]] = row[0]
+            ips.append(row[2])
+            mapping[row[2]] = {"subnet":row[1],"id":row[0]}
 
         fping = f"fping -c 2 "
         fping += " ".join(ips)
@@ -48,8 +48,9 @@ while runtime < 57:
         response["data"] = {}
         for row in parsed:
             currentIP = row[0]
-            subnet = mapping[currentIP]
-            response["data"][subnet] = {"ip":currentIP,"latency":row[2]}
+            currentID = mapping[currentIP][0]
+            subnet = mapping[currentIP][1]
+            response["data"][subnet] = {"id":currentID,"ip":currentIP,"latency":row[2]}
 
         for row in data['ips'][:100]:
             if not row[0] in response['data']: response["data"][row[0]] = {"ip":row[1],"latency":-1}

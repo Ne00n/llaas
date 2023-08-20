@@ -17,7 +17,7 @@ def validate(payload):
 def index():
     payload = json.load(request.body)
     if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
-    ips = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL LIMIT 1000",(payload['worker'],)))
+    ips = list(connection.execute("SELECT requests.id,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL LIMIT 1000",(payload['worker'],)))
     return {"ips":ips}
 
 @route('/job/deliver', method='POST')
@@ -28,7 +28,7 @@ def index():
     connection.execute('PRAGMA journal_mode = WAL;')
     connection.commit()
     for subnet,details in payload['data'].items():
-        connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ?",(details['latency'],subnet,payload['worker'],))
+        connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ? and id = ?",(details['latency'],subnet,payload['worker'],payload['id'],))
     connection.commit()
     connection.close()
     return HTTPResponse(status=200, body={})
@@ -68,7 +68,7 @@ def index(request=''):
 print("Preparing sqlite3")
 connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None)
 connection.execute("""CREATE TABLE requests (subnet, ip, expiry)""")
-connection.execute("""CREATE TABLE results (ID INTEGER NOT NULL PRIMARY KEY, subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
+connection.execute("""CREATE TABLE results (id INTEGER NOT NULL PRIMARY KEY, subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
 connection.execute('PRAGMA journal_mode = WAL;')
 connection.execute('PRAGMA foreign_keys = ON;')
 connection.commit()
