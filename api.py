@@ -50,8 +50,7 @@ def index(request=''):
         connection.commit()
         response = {}
     if not response:
-        #set expiry to 6 hours
-        expiry = int(time.time()) + 21600
+        expiry = int(time.time()) + 1800
         connection.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (?,?,?)",(asndata[1],ipv4[0], expiry))
         for worker,details in config['workers'].items():
             connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
@@ -70,7 +69,7 @@ print("Preparing sqlite3")
 connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None)
 connection.execute("""CREATE TABLE requests (subnet, ip, expiry)""")
 connection.execute("""CREATE TABLE results (subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
-connection.execute('PRAGMA journal_mode=WAL;')
+connection.execute('PRAGMA journal_mode = WAL;')
 connection.execute('PRAGMA foreign_keys = ON;')
 connection.commit()
 print("Loading config")
