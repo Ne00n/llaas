@@ -48,12 +48,12 @@ while runtime < 57:
         response["data"] = {}
         for row in parsed:
             currentIP = row[0]
-            currentID = mapping[currentIP][0]
-            subnet = mapping[currentIP][1]
+            currentID = mapping[currentIP]['id']
+            subnet = mapping[currentIP]['subnet']
             response["data"][subnet] = {"id":currentID,"ip":currentIP,"latency":row[2]}
 
         for row in data['ips'][:100]:
-            if not row[0] in response['data']: response["data"][row[0]] = {"ip":row[1],"latency":-1}
+            if not row[0] in response['data']: response["data"][row[0]] = {"id":row[0],"ip":row[2],"latency":-1}
 
         data = call(f"{config['api']}/job/deliver",response)
     elif runtime < 50: time.sleep(10)

@@ -13,32 +13,13 @@ def validate(payload):
     for worker,details in config['workers'].items():
         if worker == payload['worker'] and details['token'] == payload['token']: return True
 
-@route('/job/get', method='POST')
-def index():
-    payload = json.load(request.body)
-    if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
-    ips = list(connection.execute("SELECT requests.id,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL LIMIT 1000",(payload['worker'],)))
-    return {"ips":ips}
-
-@route('/job/deliver', method='POST')
-def index():
-    payload = json.load(request.body)
-    if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
-    connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
-    connection.execute('PRAGMA journal_mode = WAL;')
-    connection.commit()
-    for subnet,details in payload['data'].items():
-        connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ? and id = ?",(details['latency'],subnet,payload['worker'],payload['id'],))
-    connection.commit()
-    connection.close()
-    return HTTPResponse(status=200, body={})
-
-@route('/<request>', method='GET')
-def index(request=''):
+def query(request,pings):
     if len(request) > 100: return HTTPResponse(status=414, body={"data":"way to fucking long"})
     request = request.replace("/","")
     ipv4 = ipRegEx.findall(request)
     if not ipv4: return HTTPResponse(status=400, body={"data":"invalid IPv4"})
+    result = pingsRegEx.findall(pings)
+    if not result: return HTTPResponse(status=400, body={"data":"Invalid Amount of Pings"})
     asndata = asndb.lookup(ipv4[0])
     if asndata[0] is None: return HTTPResponse(status=400, body={"data":"invalid IPv4"})
     connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
@@ -53,7 +34,8 @@ def index(request=''):
         expiry = int(time.time()) + 1800
         connection.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (?,?,?)",(asndata[1],ipv4[0], expiry))
         for worker,details in config['workers'].items():
-            connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
+            pings = round(float(pings) / 2)
+            for run in range(pings): connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
         connection.commit()
         response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ?",(asndata[1],)))
     connection.close()
@@ -64,6 +46,34 @@ def index(request=''):
             break
         data[row[2]] = row[3]
     return {"subnet":response[0][0],"ip":response[0][1],"data":data}
+
+@route('/job/get', method='POST')
+def index():
+    payload = json.load(request.body)
+    if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
+    ips = list(connection.execute("SELECT results.id,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL LIMIT 1000",(payload['worker'],)))
+    return {"ips":ips}
+
+@route('/job/deliver', method='POST')
+def index():
+    payload = json.load(request.body)
+    if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
+    connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
+    connection.execute('PRAGMA journal_mode = WAL;')
+    connection.commit()
+    for subnet,details in payload['data'].items():
+        connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ? and id = ?",(details['latency'],subnet,payload['worker'],details['id'],))
+    connection.commit()
+    connection.close()
+    return HTTPResponse(status=200, body={})
+
+@route('/<request>/<pings>', method='GET')
+def index(request='',pings=2):
+    return query(request,pings)
+
+@route('/<request>', method='GET')
+def index(request=''):
+    return query(request,"2")
 
 print("Preparing sqlite3")
 connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None)
@@ -78,6 +88,7 @@ print("Loading pyasn")
 asndb = pyasn.pyasn(f"{fullPath}asn.dat")
 print("Preparing regex")
 ipRegEx = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+pingsRegEx = re.compile("^([1-9]|[1-9][0])$")
 print("Ready")
 
 run(host="127.0.0.1", port=8080, server='gunicorn')
