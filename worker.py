@@ -27,10 +27,8 @@ def call(url,payload):
             print(f"Error {e}")
             error(run)
 
-done,start = 20,10
-for run in range(6):
-    runtime = done - start
-    time.sleep(10 - runtime)
+runtime = 0
+while runtime < 57:
     start = time.perf_counter()
     data = call(f"{config['api']}/job/get",config)
     print(f"Got {len(data['ips'])} IP's")
@@ -57,4 +55,7 @@ for run in range(6):
             if not row[0] in response['data']: response["data"][row[0]] = {"ip":row[1],"latency":-1}
 
         data = call(f"{config['api']}/job/deliver",response)
+    elif runtime < 50: time.sleep(10)
+    elif runtime >= 50: time.sleep(2)
     done = time.perf_counter()
+    runtime += (done - start)
