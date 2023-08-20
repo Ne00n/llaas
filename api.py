@@ -25,7 +25,7 @@ def index():
     payload = json.load(request.body)
     if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
     connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
-    connection.execute('PRAGMA journal_mode=WAL;')
+    connection.execute('PRAGMA journal_mode = WAL;')
     connection.commit()
     for subnet,details in payload['data'].items():
         connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ?",(details['latency'],subnet,payload['worker'],))
@@ -68,7 +68,7 @@ def index(request=''):
 print("Preparing sqlite3")
 connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None)
 connection.execute("""CREATE TABLE requests (subnet, ip, expiry)""")
-connection.execute("""CREATE TABLE results (subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
+connection.execute("""CREATE TABLE results (ID INTEGER NOT NULL PRIMARY KEY, subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
 connection.execute('PRAGMA journal_mode = WAL;')
 connection.execute('PRAGMA foreign_keys = ON;')
 connection.commit()
