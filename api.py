@@ -20,6 +20,19 @@ def getConnection():
     connection.commit()
     return connection
 
+def insert(connection,subnet,ip,pings):
+    expiry = int(time.time()) + 1800
+    connection.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (?,?,?)",(subnet,ip, expiry))
+    for worker,details in config['workers'].items():
+        entries = round(float(pings) / 2)
+        for run in range(entries): connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(subnet, worker))
+    connection.commit()
+    connection.close()
+
+def cleanUp(connection):
+    connection.execute(f"DELETE FROM requests WHERE subnet = ?",(response[0][0],))
+    connection.commit()
+
 def query(request,pings):
     if len(request) > 100: return HTTPResponse(status=414, body={"data":"way to fucking long"})
     request = request.replace("/","")
@@ -32,17 +45,10 @@ def query(request,pings):
     connection = getConnection()
     response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.ROWID",(asndata[1],)))
     if response and int(time.time()) > int(response[0][4]):
-        connection.execute(f"DELETE FROM requests WHERE subnet = ?",(response[0][0],))
-        connection.commit()
+        cleanUp(connection)
         response = {}
     if not response:
-        expiry = int(time.time()) + 1800
-        connection.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (?,?,?)",(asndata[1],ipv4[0], expiry))
-        for worker,details in config['workers'].items():
-            entries = round(float(pings) / 2)
-            for run in range(entries): connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
-        connection.commit()
-        connection.close()
+        insert(connection,asndata[1],ipv4[0],pings)
         return {"error":"","subnet":asndata[1],"ip":ipv4[0],"data":{}}
     connection.close()
     data = {}
