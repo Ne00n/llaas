@@ -37,7 +37,7 @@ def genMessage(subnet,ip,data,error=""):
     return {"error":error,"subnet":subnet,"ip":ip,"data":data}
 
 def genError(error):
-    return genMessage("","","",error)
+    return genMessage("","",{},error)
 
 def query(request,pings):
     if len(request) > 100: return HTTPResponse(status=414, body=genError("Way to fucking long."))
@@ -55,7 +55,7 @@ def query(request,pings):
         response = {}
     if not response:
         insert(connection,asndata[1],ipv4[0],pings)
-        return {"error":"","subnet":asndata[1],"ip":ipv4[0],"data":{}}
+        return genMessage(asndata[1],ipv4[0],{})
     connection.close()
     data = {}
     for row in response:
