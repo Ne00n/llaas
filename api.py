@@ -24,11 +24,11 @@ def query(request,pings):
     if len(request) > 100: return HTTPResponse(status=414, body={"data":"way to fucking long"})
     request = request.replace("/","")
     ipv4 = ipRegEx.findall(request)
-    if not ipv4: return HTTPResponse(status=400, body={"data":"invalid IPv4"})
+    if not ipv4: return HTTPResponse(status=400, body={"error":"Invalid IPv4 address.","subnet":"","ip":"","data":""})
     result = pingsRegEx.findall(pings)
-    if not result: return HTTPResponse(status=400, body={"data":"Invalid Amount of Pings"})
+    if not result: return HTTPResponse(status=400, body={"error":"Invalid Amount of Pings.","subnet":"","ip":"","data":""})
     asndata = asndb.lookup(ipv4[0])
-    if asndata[0] is None: return HTTPResponse(status=400, body={"data":"invalid IPv4"})
+    if asndata[0] is None: return HTTPResponse(status=400, body={"error":"Unable to resolve IPv4 address.","subnet":"","ip":"","data":""})
     connection = getConnection()
     response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.latency",(asndata[1],)))
     if response and int(time.time()) > int(response[0][4]):
@@ -42,7 +42,8 @@ def query(request,pings):
             pings = round(float(pings) / 2)
             for run in range(pings): connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
         connection.commit()
-        response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ?",(asndata[1],)))
+        connection.close()
+        return {"error":"","subnet":asndata[1],"ip":ipv4[0],"data":{}}
     connection.close()
     data = {}
     for row in response:
@@ -51,14 +52,14 @@ def query(request,pings):
         if row[3] is None: 
             data = {}
             break
-    return {"subnet":response[0][0],"ip":response[0][1],"data":data}
+    return {"error":"","subnet":response[0][0],"ip":response[0][1],"data":data}
 
 @route('/job/get', method='POST')
 def index():
     payload = json.load(request.body)
     if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
     connection = getConnection()
-    ips = list(connection.execute("SELECT results.id,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL LIMIT 1000",(payload['worker'],)))
+    ips = list(connection.execute("SELECT results.ROWID,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL LIMIT 1000",(payload['worker'],)))
     connection.close()
     return {"ips":ips}
 
@@ -68,7 +69,7 @@ def index():
     if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
     connection = getConnection()
     for subnet,details in payload['data'].items():
-        connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ? and id = ?",(details['latency'],subnet,payload['worker'],details['id'],))
+        connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ? and ROWID = ?",(details['latency'],subnet,payload['worker'],details['id'],))
     connection.commit()
     connection.close()
     return HTTPResponse(status=200, body={})
@@ -84,7 +85,7 @@ def index(request=''):
 print("Preparing sqlite3")
 connection = getConnection()
 connection.execute("""CREATE TABLE requests (subnet PRIMARY KEY, ip, expiry)""")
-connection.execute("""CREATE TABLE results (id INTEGER NOT NULL PRIMARY KEY, subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
+connection.execute("""CREATE TABLE results (subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
 connection.commit()
 print("Loading config")
 with open(f"{fullPath}configs/api.json") as f: config = json.load(f)
