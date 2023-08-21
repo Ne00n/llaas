@@ -39,8 +39,8 @@ def query(request,pings):
         expiry = int(time.time()) + 1800
         connection.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (?,?,?)",(asndata[1],ipv4[0], expiry))
         for worker,details in config['workers'].items():
-            pings = round(float(pings) / 2)
-            for run in range(pings): connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
+            entries = round(float(pings) / 2)
+            for run in range(entries): connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(asndata[1], worker))
         connection.commit()
         connection.close()
         return {"error":"","subnet":asndata[1],"ip":ipv4[0],"data":{}}
