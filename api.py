@@ -33,15 +33,21 @@ def cleanUp(connection):
     connection.execute(f"DELETE FROM requests WHERE subnet = ?",(response[0][0],))
     connection.commit()
 
+def genMessage(subnet,ip,data,error=""):
+    return {"error":error,"subnet":subnet,"ip":ip,"data":data}
+
+def genError(error):
+    return genMessage("","","",error)
+
 def query(request,pings):
-    if len(request) > 100: return HTTPResponse(status=414, body={"data":"way to fucking long"})
+    if len(request) > 100: return HTTPResponse(status=414, body=genError("Way to fucking long."))
     request = request.replace("/","")
     ipv4 = ipRegEx.findall(request)
-    if not ipv4: return HTTPResponse(status=400, body={"error":"Invalid IPv4 address.","subnet":"","ip":"","data":""})
+    if not ipv4: return HTTPResponse(status=400, body=genError("Invalid IPv4 address."))
     result = pingsRegEx.findall(pings)
-    if not result: return HTTPResponse(status=400, body={"error":"Invalid Amount of Pings.","subnet":"","ip":"","data":""})
+    if not result: return HTTPResponse(status=400, body=genError("Invalid Amount of Pings."))
     asndata = asndb.lookup(ipv4[0])
-    if asndata[0] is None: return HTTPResponse(status=400, body={"error":"Unable to resolve IPv4 address.","subnet":"","ip":"","data":""})
+    if asndata[0] is None: return HTTPResponse(status=400, body=genError("Unable to lookup IPv4 address."))
     connection = getConnection()
     response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.ROWID",(asndata[1],)))
     if response and int(time.time()) > int(response[0][4]):
@@ -58,7 +64,7 @@ def query(request,pings):
         if row[3] is None: 
             data = {}
             break
-    return {"error":"","subnet":response[0][0],"ip":response[0][1],"data":data}
+    return genMessage(response[0][0],response[0][1],data)
 
 @route('/job/get', method='POST')
 def index():
