@@ -59,7 +59,7 @@ def index():
     payload = json.load(request.body)
     if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
     connection = getConnection()
-    ips = list(connection.execute("SELECT results.ROWID,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL LIMIT 1000",(payload['worker'],)))
+    ips = list(connection.execute("SELECT results.ROWID,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL GROUP BY requests.subnet LIMIT 1000",(payload['worker'],)))
     connection.close()
     return {"ips":ips}
 
