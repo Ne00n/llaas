@@ -30,7 +30,7 @@ def query(request,pings):
     asndata = asndb.lookup(ipv4[0])
     if asndata[0] is None: return HTTPResponse(status=400, body={"error":"Unable to resolve IPv4 address.","subnet":"","ip":"","data":""})
     connection = getConnection()
-    response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.latency",(asndata[1],)))
+    response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.ROWID",(asndata[1],)))
     if response and int(time.time()) > int(response[0][4]):
         connection.execute(f"DELETE FROM requests WHERE subnet = ?",(response[0][0],))
         connection.commit()
