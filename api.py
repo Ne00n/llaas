@@ -96,4 +96,5 @@ ipRegEx = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
 pingsRegEx = re.compile("^([1-9]|[1-9][0])$")
 print("Ready")
 
-run(host="127.0.0.1", port=8080, server='gunicorn')
+workers = (2 * os.cpu_count()) + 1
+run(host="127.0.0.1", port=8080, workers=workers, server='gunicorn')
