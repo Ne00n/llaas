@@ -38,7 +38,7 @@ while runtime < 57:
             ips.append(row[2])
             mapping[row[2]] = {"subnet":row[1],"id":row[0]}
 
-        fping = f"fping -c 2 "
+        fping = f"fping -c 1 "
         fping += " ".join(ips)
 
         p = subprocess.run(fping, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
