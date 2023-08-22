@@ -24,7 +24,7 @@ def insert(connection,subnet,ip,pings):
     expiry = int(time.time()) + 1800
     connection.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (?,?,?)",(subnet,ip, expiry))
     for worker,details in config['workers'].items():
-        for run in range(float(pings)): connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(subnet, worker))
+        for run in range(int(pings)): connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(subnet, worker))
     connection.commit()
 
 def cleanUp(connection):
