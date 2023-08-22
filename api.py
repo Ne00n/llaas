@@ -70,6 +70,7 @@ def index():
 @app.route('/job/deliver', method='POST')
 def index():
     payload = json.load(bottle.request.body)
+    print(payload)
     if not validate(payload): bottle.abort(401,"Invalid Auth")
     connection = getConnection()
     for subnet,details in payload['data'].items():
@@ -101,4 +102,4 @@ pingsRegEx = re.compile("^([1-9]|[1-9][0])$")
 print("Ready")
 
 #workers = (2 * os.cpu_count()) + 1
-app.run(host="localhost", port=8080, server='gunicorn')
+app.run(host="localhost", port=8000, server='gunicorn')
