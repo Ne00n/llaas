@@ -1,10 +1,10 @@
 #!/usr/bin/python3
-from bottle import HTTPResponse, route, run, request, template
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-import json, pyasn, sqlite3, time, re, os
+import json, pyasn, sqlite3, bottle, time, re, os
 from pathlib import Path
 
 fullPath = os.path.realpath(__file__).replace("api.py","")
+app = bottle.Bottle()
 
 def validate(payload):
     if not "token" in payload or not "worker" in payload: return False
@@ -14,7 +14,7 @@ def validate(payload):
         if worker == payload['worker'] and details['token'] == payload['token']: return True
 
 def getConnection():
-    connection = sqlite3.connect("file:subnets?mode=memory&cache=shared", uri=True, isolation_level=None, timeout=10)
+    connection = sqlite3.connect("file::memory:?cache=shared", uri=True, isolation_level=None)
     connection.execute('PRAGMA journal_mode = WAL;')
     connection.execute('PRAGMA foreign_keys = ON;')
     connection.commit()
@@ -27,27 +27,20 @@ def insert(connection,subnet,ip,pings):
         entries = round(float(pings) / 2)
         for run in range(entries): connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(subnet, worker))
     connection.commit()
-    connection.close()
 
 def cleanUp(connection):
     connection.execute(f"DELETE FROM requests WHERE subnet = ?",(response[0][0],))
     connection.commit()
 
-def genMessage(subnet,ip,data,error=""):
-    return {"error":error,"subnet":subnet,"ip":ip,"data":data}
-
-def genError(error):
-    return genMessage("","",{},error)
-
 def query(request,pings):
-    if len(request) > 100: return HTTPResponse(status=414, body=genError("Way to fucking long."))
+    if len(request) > 100: bottle.abort(413,"Way to fucking long.")
     request = request.replace("/","")
     ipv4 = ipRegEx.findall(request)
-    if not ipv4: return HTTPResponse(status=400, body=genError("Invalid IPv4 address."))
+    if not ipv4: bottle.abort(400,"Invalid IPv4 address.")
     result = pingsRegEx.findall(pings)
-    if not result: return HTTPResponse(status=400, body=genError("Invalid Amount of Pings."))
+    if not result: bottle.abort(400,"Invalid Amount of Pings.")
     asndata = asndb.lookup(ipv4[0])
-    if asndata[0] is None: return HTTPResponse(status=400, body=genError("Unable to lookup IPv4 address."))
+    if asndata[0] is None: bottle.abort(400,"Unable to lookup IPv4 address.")
     connection = getConnection()
     response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.ROWID",(asndata[1],)))
     if response and int(time.time()) > int(response[0][4]):
@@ -55,42 +48,41 @@ def query(request,pings):
         response = {}
     if not response:
         insert(connection,asndata[1],ipv4[0],pings)
-        return genMessage(asndata[1],ipv4[0],{})
-    connection.close()
-    data = {}
-    for row in response:
-        if not row[2] in data: data[row[2]] = {"pings":[]}
-        data[row[2]]["pings"].append(row[3])
-        if row[3] is None: 
-            data = {}
-            break
-    return genMessage(response[0][0],response[0][1],data)
+        connection.close()
+        return {"subnet":asndata[1],"ip":ipv4[0],"data":{}}
+    else:
+        connection.close()
+        data = {}
+        for row in response:
+            if not row[2] in data: data[row[2]] = []
+            data[row[2]].append(row[3])
+        return {"subnet":asndata[1],"ip":ipv4[0],"data":data}
 
-@route('/job/get', method='POST')
+@app.route('/job/get', method='POST')
 def index():
-    payload = json.load(request.body)
-    if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
+    payload = json.load(bottle.request.body)
+    if not validate(payload): bottle.abort(401,"Invalid Auth")
     connection = getConnection()
     ips = list(connection.execute("SELECT results.ROWID,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL GROUP BY requests.subnet LIMIT 1000",(payload['worker'],)))
     connection.close()
     return {"ips":ips}
 
-@route('/job/deliver', method='POST')
+@app.route('/job/deliver', method='POST')
 def index():
-    payload = json.load(request.body)
-    if not validate(payload): return HTTPResponse(status=401, body={"error":"Invalid Auth"})
+    payload = json.load(bottle.request.body)
+    if not validate(payload): bottle.abort(401,"Invalid Auth")
     connection = getConnection()
     for subnet,details in payload['data'].items():
         connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ? and ROWID = ?",(details['latency'],subnet,payload['worker'],details['id'],))
     connection.commit()
     connection.close()
-    return HTTPResponse(status=200, body={})
+    return {}
 
-@route('/<request>/<pings>', method='GET')
+@app.route('/<request>/<pings>', method='GET')
 def index(request='',pings="2"):
     return query(request,pings)
 
-@route('/<request>', method='GET')
+@app.route('/<request>', method='GET')
 def index(request=''):
     return query(request,"2")
 
@@ -109,4 +101,4 @@ pingsRegEx = re.compile("^([1-9]|[1-9][0])$")
 print("Ready")
 
 #workers = (2 * os.cpu_count()) + 1
-run(host="127.0.0.1", port=8080, workers=1, server='gunicorn')
+app.run(host="localhost", port=8080, server='gunicorn')
