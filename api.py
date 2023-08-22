@@ -27,8 +27,8 @@ def insert(connection,subnet,ip,pings):
         for run in range(int(pings)): connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(subnet, worker))
     connection.commit()
 
-def cleanUp(connection):
-    connection.execute(f"DELETE FROM requests WHERE subnet = ?",(response[0][0],))
+def cleanUp(connection,subnet):
+    connection.execute(f"DELETE FROM requests WHERE subnet = ?",(subnet,))
     connection.commit()
 
 def query(request,pings):
@@ -43,7 +43,7 @@ def query(request,pings):
     connection = getConnection()
     response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.ROWID",(asndata[1],)))
     if response and int(time.time()) > int(response[0][4]):
-        cleanUp(connection)
+        cleanUp(connection,asndata[1])
         response = {}
     if not response:
         insert(connection,asndata[1],ipv4[0],pings)
@@ -69,7 +69,6 @@ def index():
 @app.route('/job/deliver', method='POST')
 def index():
     payload = json.load(bottle.request.body)
-    print(payload)
     if not validate(payload): bottle.abort(401,"Invalid Auth")
     connection = getConnection()
     for subnet,details in payload['data'].items():
