@@ -79,12 +79,12 @@ def index():
     return {}
 
 @app.route('/<request>/<pings>', method='GET')
-def index(request='',pings="2"):
+def index(request='',pings="1"):
     return query(request,pings)
 
 @app.route('/<request>', method='GET')
 def index(request=''):
-    return query(request,"2")
+    return query(request,"1")
 
 print("Preparing sqlite3")
 connection = getConnection()
