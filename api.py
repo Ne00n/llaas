@@ -87,8 +87,9 @@ def index(request=''):
 
 print("Preparing sqlite3")
 connection = getConnection()
-connection.execute("""CREATE TABLE requests (subnet PRIMARY KEY, ip, expiry)""")
-connection.execute("""CREATE TABLE results (subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)""")
+connection.execute("CREATE TABLE requests (subnet PRIMARY KEY, ip, expiry)")
+connection.execute("CREATE TABLE results (subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)")
+connection.execute("CREATE INDEX subnet ON results (subnet)")
 connection.commit()
 print("Loading config")
 with open(f"{fullPath}configs/api.json") as f: config = json.load(f)
