@@ -6,6 +6,7 @@ api.json
 worker.json
 rib.*
 asn.dat
+test.py
 
 # C extensions
 *.so
