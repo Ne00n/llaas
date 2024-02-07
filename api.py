@@ -89,7 +89,7 @@ async def jobDeliver(res, req):
     connection.commit()
     connection.close()
     res.write_status(200)
-    res.send({"ips":ips})
+    res.send({})
 app.post('/job/deliver',jobDeliver)
 
 async def pingMulti(res, req):
