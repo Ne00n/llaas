@@ -17,7 +17,7 @@ def getStatus(ourl):
     try:
         url = urlparse(ourl)
         conn = httplib.HTTPConnection(url.netloc)   
-        conn.request("HEAD", url.path)
+        conn.request("GET", url.path)
         res = conn.getresponse()
         return res.status, ourl
     except:
