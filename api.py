@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-from http.server import HTTPServer, SimpleHTTPRequestHandler
 import json, pyasn, sqlite3, bottle, time, re, os
 from pathlib import Path
 
