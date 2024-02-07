@@ -1,10 +1,9 @@
 #!/usr/bin/python3
-from fastapi.responses import JSONResponse
 import json, pyasn, sqlite3, time, re, os
-from fastapi import Request, FastAPI, status
+from socketify import App
 
 fullPath = os.path.realpath(__file__).replace("api.py","")
-app = FastAPI()
+app = App()
 
 def validate(payload):
     if not "token" in payload or not "worker" in payload: return False
@@ -31,15 +30,23 @@ def cleanUp(connection,subnet):
     connection.execute(f"DELETE FROM requests WHERE subnet = ?",(subnet,))
     connection.commit()
 
-def query(request,pings):
-    if len(request) > 100: return JSONResponse(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, content="Way to fucking long.")
+def query(res,request,pings):
+    if len(request) > 100: 
+        res.write_status(413)
+        res.send("Way to fucking long.")
     request = request.replace("/","")
     ipv4 = ipRegEx.findall(request)
-    if not ipv4: return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid IPv4 address.")
+    if not ipv4: 
+        res.write_status(400)
+        res.send("Invalid IPv4 address.")
     result = pingsRegEx.findall(pings)
-    if not result: return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid Amount of Pings.")
+    if not result: 
+        res.write_status(400)
+        res.send("Invalid Amount of Pings.")
     asndata = asndb.lookup(ipv4[0])
-    if asndata[0] is None:  return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Unable to lookup IPv4 address.")
+    if asndata[0] is None: 
+        res.write_status(404)
+        res.send("Unable to lookup IPv4 address.")
     connection = getConnection()
     response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.ROWID",(asndata[1],)))
     if response and int(time.time()) > int(response[0][4]):
@@ -57,33 +64,39 @@ def query(request,pings):
             data[row[2]].append(row[3])
         return {"subnet":asndata[1],"ip":ipv4[0],"data":data}
 
-@app.post('/job/get')
-async def index(request: Request):
-    payload = await request.json()
-    if not validate(payload): return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content="Invalid Auth")
+async def jobGet(res, req):
+    payload = await res.get_json()
+    if not validate(payload): 
+        res.write_status(413)
+        res.send("Invalid Auth.")
     connection = getConnection()
     ips = list(connection.execute("SELECT results.ROWID,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL GROUP BY requests.subnet LIMIT 1000",(payload['worker'],)))
     connection.close()
     return {"ips":ips}
+app.post('/job/get',jobGet)
 
-@app.post('/job/deliver')
-async def index(request: Request):
-    payload = await request.json()
-    if not validate(payload): return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content="Invalid Auth")
+async def jobDeliver(res, req):
+    payload = await res.get_json()
+    if not validate(payload):
+        res.write_status(413)
+        res.send("Invalid Auth.")
     connection = getConnection()
     for subnet,details in payload['data'].items():
         connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ? and ROWID = ?",(details['latency'],subnet,payload['worker'],details['id'],))
     connection.commit()
     connection.close()
     return {}
+app.post('/job/deliver',jobDeliver)
 
-@app.get("/{request}/{pings}")
-async def index(request: str,pings: str):
-    return query(request,pings)
+async def pingMulti(res, req):
+    return query(res,req.get_parameter(0),req.get_parameter(1))
+app.get("/:request/:pings",pingMulti)
 
-@app.get("/{request}")
-async def index(request: str):
-    return query(request,"1")
+async def ping(res, req):
+    return query(res,req.get_parameter(0),"1")
+app.get("/:request",ping)
+
+app.any("/", lambda res,req: res.end("Nothing to see here!"))
 
 print("Preparing sqlite3")
 connection = getConnection()
@@ -99,3 +112,6 @@ print("Preparing regex")
 ipRegEx = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
 pingsRegEx = re.compile("^([1-9]|[1-9][0])$")
 print("Ready")
+
+app.listen(8888, lambda config: print("Listening on port http://localhost:%d now\n" % config.port))
+app.run()
