@@ -96,7 +96,7 @@ async def ping(res, req):
     return query(res,req.get_parameter(0),"1")
 app.get("/:request",ping)
 
-app.any("/", lambda res,req: res.end("Nothing to see here!"))
+app.any("/*", lambda res,req: res.write_status(404).end("Not Found"))
 
 print("Preparing sqlite3")
 connection = getConnection()
