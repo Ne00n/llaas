@@ -55,14 +55,16 @@ def query(res,request,pings):
     if not response:
         insert(connection,asndata[1],ipv4[0],pings)
         connection.close()
-        return {"subnet":asndata[1],"ip":ipv4[0],"data":{}}
+        res.write_status(200)
+        res.send({"subnet":asndata[1],"ip":ipv4[0],"data":{}})
     else:
         connection.close()
         data = {}
         for row in response:
             if not row[2] in data: data[row[2]] = []
             data[row[2]].append(row[3])
-        return {"subnet":asndata[1],"ip":ipv4[0],"data":data}
+        res.write_status(200)
+        res.send({"subnet":asndata[1],"ip":ipv4[0],"data":{}})
 
 async def jobGet(res, req):
     payload = await res.get_json()
@@ -72,7 +74,8 @@ async def jobGet(res, req):
     connection = getConnection()
     ips = list(connection.execute("SELECT results.ROWID,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL GROUP BY requests.subnet LIMIT 1000",(payload['worker'],)))
     connection.close()
-    return {"ips":ips}
+    res.write_status(200)
+    res.send({"ips":ips})
 app.post('/job/get',jobGet)
 
 async def jobDeliver(res, req):
@@ -85,7 +88,8 @@ async def jobDeliver(res, req):
         connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ? and ROWID = ?",(details['latency'],subnet,payload['worker'],details['id'],))
     connection.commit()
     connection.close()
-    return {}
+    res.write_status(200)
+    res.send({"ips":ips})
 app.post('/job/deliver',jobDeliver)
 
 async def pingMulti(res, req):
