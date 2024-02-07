@@ -1,6 +1,7 @@
 #!/usr/bin/python3
+from fastapi.responses import JSONResponse
 import json, pyasn, sqlite3, time, re, os
-from fastapi import Request, FastAPI
+from fastapi import Request, FastAPI, status
 
 fullPath = os.path.realpath(__file__).replace("api.py","")
 app = FastAPI()
@@ -31,14 +32,14 @@ def cleanUp(connection,subnet):
     connection.commit()
 
 def query(request,pings):
-    if len(request) > 100: bottle.abort(413,"Way to fucking long.")
+    if len(request) > 100: return JSONResponse(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, content="Way to fucking long.")
     request = request.replace("/","")
     ipv4 = ipRegEx.findall(request)
-    if not ipv4: bottle.abort(400,"Invalid IPv4 address.")
+    if not ipv4: return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid IPv4 address.")
     result = pingsRegEx.findall(pings)
-    if not result: bottle.abort(400,"Invalid Amount of Pings.")
+    if not result: return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid Amount of Pings.")
     asndata = asndb.lookup(ipv4[0])
-    if asndata[0] is None: bottle.abort(400,"Unable to lookup IPv4 address.")
+    if asndata[0] is None:  return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Unable to find IPv4 address.")
     connection = getConnection()
     response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.ROWID",(asndata[1],)))
     if response and int(time.time()) > int(response[0][4]):
@@ -59,7 +60,7 @@ def query(request,pings):
 @app.post('/job/get')
 async def index(request: Request):
     payload = await request.json()
-    if not validate(payload): bottle.abort(401,"Invalid Auth")
+    if not validate(payload): return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content="Invalid Auth")
     connection = getConnection()
     ips = list(connection.execute("SELECT results.ROWID,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL GROUP BY requests.subnet LIMIT 1000",(payload['worker'],)))
     connection.close()
@@ -68,7 +69,7 @@ async def index(request: Request):
 @app.post('/job/deliver')
 async def index(request: Request):
     payload = await request.json()
-    if not validate(payload): bottle.abort(401,"Invalid Auth")
+    if not validate(payload): return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content="Invalid Auth")
     connection = getConnection()
     for subnet,details in payload['data'].items():
         connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ? and ROWID = ?",(details['latency'],subnet,payload['worker'],details['id'],))
