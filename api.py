@@ -84,10 +84,6 @@ async def index(request: str,pings: str):
 async def index(request: str):
     return query(request,"1")
 
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
 print("Preparing sqlite3")
 connection = getConnection()
 connection.execute("CREATE TABLE requests (subnet PRIMARY KEY, ip, expiry)")
