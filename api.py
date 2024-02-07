@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import json, pyasn, sqlite3, bottle, time, re, os
-from pathlib import Path
 
 fullPath = os.path.realpath(__file__).replace("api.py","")
 app = bottle.Bottle()
