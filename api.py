@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import json, pyasn, sqlite3, time, re, os
-from fastapi import FastAPI
+from fastapi import Request, FastAPI
 
 fullPath = os.path.realpath(__file__).replace("api.py","")
 app = FastAPI()
@@ -57,8 +57,8 @@ def query(request,pings):
         return {"subnet":asndata[1],"ip":ipv4[0],"data":data}
 
 @app.post('/job/get')
-async def index():
-    payload = json.load(bottle.request.body)
+async def index(request: Request):
+    payload = await request.json()
     if not validate(payload): bottle.abort(401,"Invalid Auth")
     connection = getConnection()
     ips = list(connection.execute("SELECT results.ROWID,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL GROUP BY requests.subnet LIMIT 1000",(payload['worker'],)))
@@ -66,8 +66,8 @@ async def index():
     return {"ips":ips}
 
 @app.post('/job/deliver')
-async def index():
-    payload = json.load(bottle.request.body)
+async def index(request: Request):
+    payload = await request.json()
     if not validate(payload): bottle.abort(401,"Invalid Auth")
     connection = getConnection()
     for subnet,details in payload['data'].items():
