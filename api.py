@@ -1,8 +1,9 @@
 #!/usr/bin/python3
-import json, pyasn, sqlite3, bottle, time, re, os
+import json, pyasn, sqlite3, time, re, os
+from fastapi import FastAPI
 
 fullPath = os.path.realpath(__file__).replace("api.py","")
-app = bottle.Bottle()
+app = FastAPI()
 
 def validate(payload):
     if not "token" in payload or not "worker" in payload: return False
@@ -55,8 +56,8 @@ def query(request,pings):
             data[row[2]].append(row[3])
         return {"subnet":asndata[1],"ip":ipv4[0],"data":data}
 
-@app.route('/job/get', method='POST')
-def index():
+@app.post('/job/get')
+async def index():
     payload = json.load(bottle.request.body)
     if not validate(payload): bottle.abort(401,"Invalid Auth")
     connection = getConnection()
@@ -64,8 +65,8 @@ def index():
     connection.close()
     return {"ips":ips}
 
-@app.route('/job/deliver', method='POST')
-def index():
+@app.post('/job/deliver')
+async def index():
     payload = json.load(bottle.request.body)
     if not validate(payload): bottle.abort(401,"Invalid Auth")
     connection = getConnection()
@@ -75,13 +76,17 @@ def index():
     connection.close()
     return {}
 
-@app.route('/<request>/<pings>', method='GET')
-def index(request='',pings="1"):
+@app.get("/{request}/{pings}")
+async def index(request: str,pings: str):
     return query(request,pings)
 
-@app.route('/<request>', method='GET')
-def index(request=''):
+@app.get("/{request}")
+async def index(request: str):
     return query(request,"1")
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
 
 print("Preparing sqlite3")
 connection = getConnection()
@@ -97,6 +102,3 @@ print("Preparing regex")
 ipRegEx = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
 pingsRegEx = re.compile("^([1-9]|[1-9][0])$")
 print("Ready")
-
-#workers = (2 * os.cpu_count()) + 1
-app.run(host="localhost", port=8000, server='gunicorn')
