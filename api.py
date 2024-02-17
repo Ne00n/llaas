@@ -49,6 +49,7 @@ def query(res,request,pings):
         res.write_status(404)
         res.send("Unable to lookup IPv4 address.")
     cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = %s ORDER BY results.ID",(asndata[1],))
+    connection.commit()
     response = list(cursor)
     if response and int(time.time()) > int(response[0]['expiry']):
         cleanUp(asndata[1])
