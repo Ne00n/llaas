@@ -20,13 +20,6 @@ def validate(payload):
     for worker,details in config['workers'].items():
         if worker == payload['worker'] and details['token'] == payload['token']: return True
 
-def insert(subnet,ip,pings):
-    expiry = int(time.time()) + 1800
-    cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(subnet,ip, expiry))
-    for worker,details in config['workers'].items():
-        for run in range(int(pings)): cursor.execute(f"INSERT INTO results (subnet, worker) VALUES (%s,%s)",(subnet, worker))
-    connection.commit()
-
 def cleanUp(subnet):
     cursor.execute(f"DELETE FROM requests WHERE subnet = %s",(subnet,))
     connection.commit()
@@ -43,7 +36,7 @@ def query(res,request,pings):
         request = [request]
     for ip in request:
         ipv4 = ipRegEx.findall(ip)
-        if not ipv4: 
+        if not ipv4:
             res.write_status(400)
             res.send("Invalid IPv4 address.")
             return
@@ -52,20 +45,25 @@ def query(res,request,pings):
         res.write_status(400)
         res.send("Invalid Amount of Pings.")
         return
-    payload = []
     for ip in request:
         asndata = asndb.lookup(ip)
         if asndata[0] is None: 
-            res.write_status(404)
-            res.send("Unable to lookup IPv4 address.")
-            return
+            request.remove(ip)
+            continue
+    payload,submit = [],False
+    for ip in request:
         cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = %s ORDER BY results.ID",(asndata[1],))
         connection.commit()
         response = list(cursor)
         if response and int(time.time()) > int(response[0]['expiry']):
             cleanUp(asndata[1])
             response = {}
-        if not response: insert(asndata[1],ip,pings)
+        if not response:
+            submit = True
+            expiry = int(time.time()) + 1800
+            cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(asndata[1],ip, expiry))
+            for worker,details in config['workers'].items():
+                for run in range(int(pings)): cursor.execute(f"INSERT INTO results (subnet, worker) VALUES (%s,%s)",(asndata[1], worker))
         else:
             data = {}
             for row in response:
@@ -75,6 +73,7 @@ def query(res,request,pings):
                 else: 
                     data[row['worker']].append(int(row['latency']))
                 payload.append({"subnet":asndata[1],"ip":ip,"data":data})
+    if submit: connection.commit()
     res.write_status(200)
     res.send(payload)
 

@@ -10,7 +10,7 @@ def doWork():
     while True:
         url = q.get()
         status, url = getStatus(url)
-        #doSomethingWithResult(status, url)
+        doSomethingWithResult(status, url)
         q.task_done()
 
 def getStatus(ourl):
@@ -33,9 +33,12 @@ for i in range(concurrent):
     t.start()
 try:
     for run in range(1000):
-        ip = ".".join(map(str, (random.randint(0, 255) 
-                        for _ in range(4))))
-        q.put(f"http://127.0.0.1:8888/{ip}")
+        block = []
+        for address in range(100):
+            ip = ".".join(map(str, (random.randint(0, 255) 
+                            for _ in range(4))))
+            block.append(ip)
+        q.put(f"http://127.0.0.1:8888/{','.join(block)}")
     q.join()
 except KeyboardInterrupt:
     sys.exit(1)
