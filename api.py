@@ -20,7 +20,7 @@ def validate(payload):
     for worker,details in config['workers'].items():
         if worker == payload['worker'] and details['token'] == payload['token']: return True
 
-def insert(connection,subnet,ip,pings):
+def insert(subnet,ip,pings):
     expiry = int(time.time()) + 1800
     cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(subnet,ip, expiry))
     for worker,details in config['workers'].items():
@@ -50,22 +50,20 @@ def query(res,request,pings):
         res.send("Unable to lookup IPv4 address.")
     cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = %s ORDER BY results.ID",(asndata[1],))
     response = list(cursor)
-    if response and int(time.time()) > int(response[0][4]):
+    if response and int(time.time()) > int(response[0]['expiry']):
         cleanUp(asndata[1])
         response = {}
     if not response:
         insert(connection,asndata[1],ipv4[0],pings)
-        connection.close()
         res.write_status(200)
         res.send({"subnet":asndata[1],"ip":ipv4[0],"data":{}})
     else:
-        connection.close()
         data = {}
         for row in response:
-            if not row[2] in data: data[row[2]] = []
-            data[row[2]].append(row[3])
+            if not row['worker'] in data: data[row['worker']] = []
+            data[row['worker']].append(row['latency'])
         res.write_status(200)
-        res.send({"subnet":asndata[1],"ip":ipv4[0],"data":{}})
+        res.send({"subnet":asndata[1],"ip":ipv4[0],"data":data})
 
 async def jobGet(res, req):
     payload = await res.get_json()
