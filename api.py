@@ -1,9 +1,16 @@
 #!/usr/bin/python3
-import json, pyasn, sqlite3, time, re, os
+import pymysql.cursors ,json, pyasn, time, re, os
 from socketify import App
 
 fullPath = os.path.realpath(__file__).replace("api.py","")
 app = App()
+
+# Connect to the database
+connection = pymysql.connect(host='localhost',
+                             user='llaas',
+                             password='llaas',
+                             database='llaas',
+                             cursorclass=pymysql.cursors.DictCursor)
 
 def validate(payload):
     if not "token" in payload or not "worker" in payload: return False
@@ -11,13 +18,6 @@ def validate(payload):
     if not re.findall(r"^([A-Za-z0-9.=+-]{3,50})$",payload['worker'],re.MULTILINE | re.DOTALL): return False
     for worker,details in config['workers'].items():
         if worker == payload['worker'] and details['token'] == payload['token']: return True
-
-def getConnection():
-    connection = sqlite3.connect("file::memory:?cache=shared", uri=True, isolation_level=None)
-    connection.execute('PRAGMA journal_mode = WAL;')
-    connection.execute('PRAGMA foreign_keys = ON;')
-    connection.commit()
-    return connection
 
 def insert(connection,subnet,ip,pings):
     expiry = int(time.time()) + 1800
@@ -102,12 +102,6 @@ app.get("/:request",ping)
 
 app.any("/*", lambda res,req: res.write_status(404).end("Not Found"))
 
-print("Preparing sqlite3")
-connection = getConnection()
-connection.execute("CREATE TABLE requests (subnet PRIMARY KEY, ip, expiry)")
-connection.execute("CREATE TABLE results (subnet, worker, latency DECIMAL(3,2) DEFAULT NULL, FOREIGN KEY(subnet) REFERENCES requests(subnet) ON DELETE CASCADE)")
-connection.execute("CREATE INDEX subnet ON results (subnet)")
-connection.commit()
 print("Loading config")
 with open(f"{fullPath}configs/api.json") as f: config = json.load(f)
 print("Loading pyasn")
