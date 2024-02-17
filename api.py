@@ -61,7 +61,7 @@ def query(res,request,pings):
         data = {}
         for row in response:
             if not row['worker'] in data: data[row['worker']] = []
-            data[row['worker']].append(row['latency'])
+            data[row['worker']].append(int(row['latency']))
         res.write_status(200)
         res.send({"subnet":asndata[1],"ip":ipv4[0],"data":data})
 
