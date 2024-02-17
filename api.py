@@ -32,7 +32,7 @@ def cleanUp(subnet):
     connection.commit()
 
 def query(res,request,pings):
-    if len(request) > 100: 
+    if len(request) > 1500: 
         res.write_status(413)
         res.send("Way to fucking long.")
         return
