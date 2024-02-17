@@ -35,40 +35,48 @@ def query(res,request,pings):
     if len(request) > 100: 
         res.write_status(413)
         res.send("Way to fucking long.")
+        return
     request = request.replace("/","")
-    ipv4 = ipRegEx.findall(request)
-    if not ipv4: 
-        res.write_status(400)
-        res.send("Invalid IPv4 address.")
+    if "," in request: 
+        request = request.split(",")
+    else:
+        request = [request]
+    for ip in request:
+        ipv4 = ipRegEx.findall(ip)
+        if not ipv4: 
+            res.write_status(400)
+            res.send("Invalid IPv4 address.")
+            return
     result = pingsRegEx.findall(pings)
     if not result: 
         res.write_status(400)
         res.send("Invalid Amount of Pings.")
-    asndata = asndb.lookup(ipv4[0])
-    if asndata[0] is None: 
-        res.write_status(404)
-        res.send("Unable to lookup IPv4 address.")
         return
-    cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = %s ORDER BY results.ID",(asndata[1],))
-    connection.commit()
-    response = list(cursor)
-    if response and int(time.time()) > int(response[0]['expiry']):
-        cleanUp(asndata[1])
-        response = {}
-    if not response:
-        insert(asndata[1],ipv4[0],pings)
-        res.write_status(200)
-        res.send({"subnet":asndata[1],"ip":ipv4[0],"data":{}})
-    else:
-        data = {}
-        for row in response:
-            if not row['worker'] in data: data[row['worker']] = []
-            if row['latency'] == None:
-               data[row['worker']].append(0)
-            else: 
-                data[row['worker']].append(int(row['latency']))
-        res.write_status(200)
-        res.send({"subnet":asndata[1],"ip":ipv4[0],"data":data})
+    payload = []
+    for ip in request:
+        asndata = asndb.lookup(ip)
+        if asndata[0] is None: 
+            res.write_status(404)
+            res.send("Unable to lookup IPv4 address.")
+            return
+        cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = %s ORDER BY results.ID",(asndata[1],))
+        connection.commit()
+        response = list(cursor)
+        if response and int(time.time()) > int(response[0]['expiry']):
+            cleanUp(asndata[1])
+            response = {}
+        if not response: insert(asndata[1],ip,pings)
+        else:
+            data = {}
+            for row in response:
+                if not row['worker'] in data: data[row['worker']] = []
+                if row['latency'] == None:
+                    data[row['worker']].append(0)
+                else: 
+                    data[row['worker']].append(int(row['latency']))
+                payload.append({"subnet":asndata[1],"ip":ip,"data":data})
+    res.write_status(200)
+    res.send(payload)
 
 async def jobGet(res, req):
     payload = await res.get_json()
