@@ -4,7 +4,7 @@ import random, sys
 import http.client as httplib
 from queue import Queue
 
-concurrent = 200
+concurrent = 1000
 
 def doWork():
     while True:
@@ -32,7 +32,7 @@ for i in range(concurrent):
     t.daemon = True
     t.start()
 try:
-    for run in range(2000):
+    for run in range(1000):
         ip = ".".join(map(str, (random.randint(0, 255) 
                         for _ in range(4))))
         q.put(f"http://127.0.0.1:8888/{ip}")
