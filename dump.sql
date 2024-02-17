@@ -3,13 +3,13 @@ START TRANSACTION;
 SET time_zone = "+00:00";
 
 CREATE TABLE `requests` (
-  `ID` int(11) NOT NULL,
   `subnet` varchar(20) NOT NULL,
   `ip` varchar(15) NOT NULL,
   `expiry` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `results` (
+  `ID` int(11) NOT NULL,
   `subnet` varchar(20) NOT NULL,
   `worker` varchar(15) NOT NULL,
   `latency` decimal(6,2) DEFAULT NULL
@@ -17,14 +17,14 @@ CREATE TABLE `results` (
 
 
 ALTER TABLE `requests`
-  ADD PRIMARY KEY (`ID`),
   ADD UNIQUE KEY `subnet` (`subnet`);
 
 ALTER TABLE `results`
+  ADD PRIMARY KEY (`ID`),
   ADD UNIQUE KEY `subnet` (`subnet`,`worker`);
 
 
-ALTER TABLE `requests`
+ALTER TABLE `results`
   MODIFY `ID` int(11) NOT NULL AUTO_INCREMENT;
 
 
