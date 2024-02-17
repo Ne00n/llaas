@@ -54,7 +54,7 @@ def query(res,request,pings):
         cleanUp(asndata[1])
         response = {}
     if not response:
-        insert(connection,asndata[1],ipv4[0],pings)
+        insert(asndata[1],ipv4[0],pings)
         res.write_status(200)
         res.send({"subnet":asndata[1],"ip":ipv4[0],"data":{}})
     else:
