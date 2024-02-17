@@ -35,7 +35,7 @@ try:
     for run in range(2000):
         ip = ".".join(map(str, (random.randint(0, 255) 
                         for _ in range(4))))
-        q.put(f"http://127.0.0.1:8080/{ip}")
+        q.put(f"http://127.0.0.1:8888/{ip}")
     q.join()
 except KeyboardInterrupt:
     sys.exit(1)
