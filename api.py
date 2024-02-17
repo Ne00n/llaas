@@ -11,6 +11,7 @@ connection = pymysql.connect(host='localhost',
                              password='llaas',
                              database='llaas',
                              cursorclass=pymysql.cursors.DictCursor)
+cursor = connection.cursor()
 
 def validate(payload):
     if not "token" in payload or not "worker" in payload: return False
@@ -21,13 +22,13 @@ def validate(payload):
 
 def insert(connection,subnet,ip,pings):
     expiry = int(time.time()) + 1800
-    connection.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (?,?,?)",(subnet,ip, expiry))
+    cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(subnet,ip, expiry))
     for worker,details in config['workers'].items():
-        for run in range(int(pings)): connection.execute(f"INSERT INTO results (subnet, worker) VALUES (?,?)",(subnet, worker))
+        for run in range(int(pings)): cursor.execute(f"INSERT INTO results (subnet, worker) VALUES (%s,%s)",(subnet, worker))
     connection.commit()
 
-def cleanUp(connection,subnet):
-    connection.execute(f"DELETE FROM requests WHERE subnet = ?",(subnet,))
+def cleanUp(subnet):
+    cursor.execute(f"DELETE FROM requests WHERE subnet = %s",(subnet,))
     connection.commit()
 
 def query(res,request,pings):
@@ -47,10 +48,10 @@ def query(res,request,pings):
     if asndata[0] is None: 
         res.write_status(404)
         res.send("Unable to lookup IPv4 address.")
-    connection = getConnection()
-    response = list(connection.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = ? ORDER BY results.ROWID",(asndata[1],)))
+    cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = %s ORDER BY results.ID",(asndata[1],))
+    response = list(cursor)
     if response and int(time.time()) > int(response[0][4]):
-        cleanUp(connection,asndata[1])
+        cleanUp(asndata[1])
         response = {}
     if not response:
         insert(connection,asndata[1],ipv4[0],pings)
@@ -71,9 +72,8 @@ async def jobGet(res, req):
     if not validate(payload): 
         res.write_status(413)
         res.send("Invalid Auth.")
-    connection = getConnection()
-    ips = list(connection.execute("SELECT results.ROWID,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = ? AND results.latency is NULL GROUP BY requests.subnet LIMIT 1000",(payload['worker'],)))
-    connection.close()
+    cursor.execute("SELECT results.ID,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = %s AND results.latency is NULL GROUP BY requests.subnet LIMIT 1000",(payload['worker'],))
+    ips = list(cursor)
     res.write_status(200)
     res.send({"ips":ips})
 app.post('/job/get',jobGet)
@@ -83,11 +83,9 @@ async def jobDeliver(res, req):
     if not validate(payload):
         res.write_status(413)
         res.send("Invalid Auth.")
-    connection = getConnection()
     for subnet,details in payload['data'].items():
-        connection.execute(f"UPDATE results SET latency = ? WHERE subnet = ? and worker = ? and ROWID = ?",(details['latency'],subnet,payload['worker'],details['id'],))
+        cursor.execute(f"UPDATE results SET latency = %s WHERE subnet = %s and worker = %s and ID = %s",(details['latency'],subnet,payload['worker'],details['id'],))
     connection.commit()
-    connection.close()
     res.write_status(200)
     res.send({})
 app.post('/job/deliver',jobDeliver)
