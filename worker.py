@@ -34,9 +34,9 @@ while runtime < 57:
     print(f"Got {len(data['ips'])} IP's")
     if len(data['ips']) > 0:
         ips,mapping = [],{}
-        for row in data['ips'][:100]: 
-            ips.append(row[2])
-            mapping[row[2]] = {"subnet":row[1],"id":row[0]}
+        for row in data['ips'][:100]:
+            ips.append(row['ip'])
+            mapping[row['ip']] = row
 
         fping = f"fping -c 1 "
         fping += " ".join(ips)
@@ -48,12 +48,12 @@ while runtime < 57:
         response["data"] = {}
         for row in parsed:
             currentIP = row[0]
-            currentID = mapping[currentIP]['id']
+            currentID = mapping[currentIP]['ID']
             subnet = mapping[currentIP]['subnet']
             response["data"][subnet] = {"id":currentID,"ip":currentIP,"latency":row[2]}
 
         for row in data['ips'][:100]:
-            if not row[1] in response['data']: response["data"][row[1]] = {"id":row[0],"ip":row[2],"latency":-1}
+            if not row['subnet'] in response['data']: response["data"][row[1]] = {"id":row[0],"ip":row[2],"latency":-1}
 
         data = call(f"{config['api']}/job/deliver",response)
     elif runtime < 50: time.sleep(10)
