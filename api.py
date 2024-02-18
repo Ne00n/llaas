@@ -45,13 +45,12 @@ def query(res,request,pings):
         res.write_status(400)
         res.send("Invalid Amount of Pings.")
         return
+    payload,submit = [],False
     for ip in request:
         asndata = asndb.lookup(ip)
         if asndata[0] is None: 
             request.remove(ip)
             continue
-    payload,submit = [],False
-    for ip in request:
         cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = %s ORDER BY results.ID",(asndata[1],))
         connection.commit()
         response = list(cursor)
