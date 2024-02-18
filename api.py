@@ -100,10 +100,6 @@ async def jobDeliver(res, req):
     res.send({})
 app.post('/job/deliver',jobDeliver)
 
-async def pingMulti(res, req):
-    return query(res,req.get_parameter(0),req.get_parameter(1))
-app.get("/:request/:pings",pingMulti)
-
 async def ping(res, req):
     return query(res,req.get_parameter(0),"1")
 app.get("/:request",ping)
