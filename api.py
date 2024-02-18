@@ -74,7 +74,7 @@ def query(res,request,pings):
                 payload.append({"subnet":asndata[1],"ip":ip,"data":data})
     if submit: connection.commit()
     res.write_status(200)
-    res.send(payload)
+    res.send(json.dumps(payload, indent=4))
 
 async def jobGet(res, req):
     payload = await res.get_json()
