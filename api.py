@@ -52,7 +52,7 @@ def query(res,request,pings):
         res.send("Invalid Amount of Pings.")
         return
     payload = []
-    lookup = {}
+    lookup,commit = {},False
     for ip in request:
         asndata = asndb.lookup(ip)
         if asndata[0] is None: continue
@@ -72,7 +72,7 @@ def query(res,request,pings):
             cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(subnet,ip, expiry))
             for worker,details in config['workers'].items():
                 for run in range(int(pings)): cursor.execute(f"INSERT INTO results (subnet, worker) VALUES (%s,%s)",(subnet, worker))
-            connection.commit()
+            commit = True
         data = {}
         for row in dbRecord:
             if not row['worker'] in data: data[row['worker']] = []
@@ -81,6 +81,7 @@ def query(res,request,pings):
             else: 
                 data[row['worker']].append(int(row['latency']))
         payload.append({"subnet":asndata[1],"ip":ip,"results":data})
+    if commit: connection.commit()
     res.write_status(200)
     res.send(json.dumps(payload, indent=4))
 
