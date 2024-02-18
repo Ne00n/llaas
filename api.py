@@ -71,7 +71,7 @@ def query(res,request,pings):
                     data[row['worker']].append(0)
                 else: 
                     data[row['worker']].append(int(row['latency']))
-                payload.append({"subnet":asndata[1],"ip":ip,"data":data})
+                payload.append({"subnet":asndata[1],"ip":ip,"results":data})
     if submit: connection.commit()
     res.write_status(200)
     res.send(json.dumps(payload, indent=4))
