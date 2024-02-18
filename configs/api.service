@@ -8,6 +8,6 @@ Group=llaas
 Type=simple
 StandardOutput=null
 WorkingDirectory=/home/llaas
-ExecStart=/usr/bin/python3 api.py
+ExecStart=/usr/bin/python3 -m socketify api:run --workers 2 --port 8888
 [Install]
 WantedBy=multi-user.target
