@@ -1,5 +1,11 @@
 {
     "workers": {
         "local":{"token":"niandOrirHejDitelonInAdOodEtVecVeGhofAsk"}
+    },
+    "mysql": {
+        "host":"127.0.0.1",
+        "user":"llaas",
+        "password":"llaas",
+        "database":"llaas"
     }
 }
