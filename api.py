@@ -66,7 +66,7 @@ def query(res,request,pings):
         dbRecord = findSubnet(subnet,dbResult)
         if dbRecord and int(time.time()) > int(dbRecord[0]['expiry']):
             cleanUp(dbRecord[0]['subnet'])
-            dbRecord = False
+            dbRecord = []
         if not dbRecord:
             expiry = int(time.time()) + 1800
             cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(subnet,ip, expiry))
