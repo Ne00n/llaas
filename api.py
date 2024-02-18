@@ -24,8 +24,14 @@ def cleanUp(subnet):
     cursor.execute(f"DELETE FROM requests WHERE subnet = %s",(subnet,))
     connection.commit()
 
+def findSubnet(subnet,dbResult):
+    response = []
+    for row in dbResult:
+        if row['subnet'] == subnet: response.append(row)
+    return response
+
 def query(res,request,pings):
-    if len(request) > 1500: 
+    if len(request) > 15000: 
         res.write_status(413)
         res.send("Way to fucking long.")
         return
@@ -46,31 +52,35 @@ def query(res,request,pings):
         res.send("Invalid Amount of Pings.")
         return
     payload = []
+    lookup = {}
     for ip in request:
         asndata = asndb.lookup(ip)
-        if asndata[0] is None: 
-            request.remove(ip)
-            continue
-        cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet = %s ORDER BY results.ID",(asndata[1],))
-        connection.commit()
-        response = list(cursor)
-        if response and int(time.time()) > int(response[0]['expiry']):
-            cleanUp(asndata[1])
-            response = {}
-        if not response:
+        if asndata[0] is None: continue
+        lookup[asndata[1]] = ip
+    format_strings = ','.join(['%s'] * len(lookup))
+    cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet IN (%s) ORDER BY results.ID" % format_strings,
+                tuple(list(lookup)))
+    connection.commit()
+    dbResult = list(cursor)
+    for subnet,ip in lookup.items():
+        dbRecord = findSubnet(subnet,dbResult)
+        if dbRecord and int(time.time()) > int(dbRecord[0]['expiry']):
+            cleanUp(dbRecord[0]['subnet'])
+            dbRecord = False
+        if not dbRecord:
             expiry = int(time.time()) + 1800
-            cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(asndata[1],ip, expiry))
+            cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(subnet,ip, expiry))
             for worker,details in config['workers'].items():
-                for run in range(int(pings)): cursor.execute(f"INSERT INTO results (subnet, worker) VALUES (%s,%s)",(asndata[1], worker))
+                for run in range(int(pings)): cursor.execute(f"INSERT INTO results (subnet, worker) VALUES (%s,%s)",(subnet, worker))
             connection.commit()
         data = {}
-        for row in response:
+        for row in dbRecord:
             if not row['worker'] in data: data[row['worker']] = []
             if row['latency'] == None:
                 data[row['worker']].append(0)
             else: 
                 data[row['worker']].append(int(row['latency']))
-            payload.append({"subnet":asndata[1],"ip":ip,"results":data})
+        payload.append({"subnet":asndata[1],"ip":ip,"results":data})
     res.write_status(200)
     res.send(json.dumps(payload, indent=4))
 
