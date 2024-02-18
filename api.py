@@ -63,15 +63,14 @@ def query(res,request,pings):
             for worker,details in config['workers'].items():
                 for run in range(int(pings)): cursor.execute(f"INSERT INTO results (subnet, worker) VALUES (%s,%s)",(asndata[1], worker))
             connection.commit()
-        else:
-            data = {}
-            for row in response:
-                if not row['worker'] in data: data[row['worker']] = []
-                if row['latency'] == None:
-                    data[row['worker']].append(0)
-                else: 
-                    data[row['worker']].append(int(row['latency']))
-                payload.append({"subnet":asndata[1],"ip":ip,"results":data})
+        data = {}
+        for row in response:
+            if not row['worker'] in data: data[row['worker']] = []
+            if row['latency'] == None:
+                data[row['worker']].append(0)
+            else: 
+                data[row['worker']].append(int(row['latency']))
+            payload.append({"subnet":asndata[1],"ip":ip,"results":data})
     res.write_status(200)
     res.send(json.dumps(payload, indent=4))
 
