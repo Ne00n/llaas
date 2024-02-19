@@ -85,7 +85,7 @@ def run(app: App):
                 if row['latency'] == None:
                     data[row['worker']].append(0)
                 else: 
-                    data[row['worker']].append(int(row['latency']))
+                    data[row['worker']].append(float(row['latency']))
             payload.append({"subnet":asndata[1],"ip":ip,"results":data})
         if commit: connection.commit()
         res.write_status(200)
