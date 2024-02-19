@@ -20,10 +20,6 @@ def validate(payload):
     for worker,details in config['workers'].items():
         if worker == payload['worker'] and details['token'] == payload['token']: return True
 
-def cleanUp(subnet):
-    cursor.execute(f"DELETE FROM requests WHERE subnet = %s",(subnet,))
-    connection.commit()
-
 def findSubnet(subnet,dbResult):
     response = []
     for row in dbResult:
@@ -74,7 +70,8 @@ def run(app: App):
         for subnet,ip in lookup.items():
             dbRecord = findSubnet(subnet,dbResult)
             if dbRecord and int(time.time()) > int(dbRecord[0]['expiry']):
-                cleanUp(dbRecord[0]['subnet'])
+                cursor.execute(f"DELETE FROM requests WHERE subnet = %s",(dbRecord[0]['subnet'],))
+                connection.commit()
                 dbRecord = []
             if not dbRecord:
                 expiry = int(time.time()) + 1800
