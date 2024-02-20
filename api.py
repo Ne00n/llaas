@@ -63,7 +63,7 @@ def run(app: App):
             if asndata[0] is None: continue
             lookup[asndata[1]] = ip
         format_strings = ','.join(['%s'] * len(lookup))
-        cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet IN (%s) ORDER BY results.ID" % format_strings,
+        cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet IN (%s)" % format_strings,
                     tuple(list(lookup)))
         connection.commit()
         dbResult = list(cursor)
@@ -94,7 +94,7 @@ def run(app: App):
         if not validate(payload): 
             res.write_status(413)
             res.send("Invalid Auth.")
-        cursor.execute("SELECT results.ID,requests.subnet,requests.ip,results.worker FROM results LEFT JOIN requests ON results.subnet = requests.subnet WHERE results.worker = %s AND results.latency is NULL ORDER BY ID LIMIT 1500;",(payload['worker'],))
+        cursor.execute("SELECT results.ID,requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE results.worker = %s AND results.latency is NULL LIMIT 1000",(payload['worker'],))
         ips = list(cursor)
         res.write_status(200)
         res.send({"ips":ips})
@@ -106,8 +106,8 @@ def run(app: App):
             res.write_status(413)
             res.send("Invalid Auth.")
         toInsert = []
-        for subnet,details in payload['data'].items(): toInsert.append([details['latency'],subnet,payload['worker'])
-        cursor.executemany(f"UPDATE results SET latency = %s WHERE subnet = %s and worker = %s",(toInsert))
+        for subnet,details in payload['data'].items(): toInsert.append([subnet,payload['worker'],details['latency']])
+        cursor.executemany(f"INSERT results (subnet, worker, latency) VALUES (%s,%s,%s)",toInsert)
         connection.commit()
         res.write_status(200)
         res.send({})
