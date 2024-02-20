@@ -106,8 +106,8 @@ def run(app: App):
             res.write_status(413)
             res.send("Invalid Auth.")
         toInsert = []
-        for subnet,details in payload['data'].items(): toInsert.append([details['latency'],subnet,payload['worker'],details['id']])
-        cursor.executemany(f"UPDATE results SET latency = %s WHERE subnet = %s and worker = %s and ID = %s",(toInsert))
+        for subnet,details in payload['data'].items(): toInsert.append([details['latency'],subnet,payload['worker'])
+        cursor.executemany(f"UPDATE results SET latency = %s WHERE subnet = %s and worker = %s",(toInsert))
         connection.commit()
         res.write_status(200)
         res.send({})
