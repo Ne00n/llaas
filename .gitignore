@@ -8,6 +8,7 @@ rib.*
 asn.dat
 test.py
 locustfile.py
+bench*
 
 # C extensions
 *.so
