@@ -48,9 +48,8 @@ while runtime < 57:
         response["data"] = {}
         for row in parsed:
             currentIP = row[0]
-            currentID = mapping[currentIP]['ID']
             subnet = mapping[currentIP]['subnet']
-            response["data"][subnet] = {"id":currentID,"ip":currentIP,"latency":row[2]}
+            response["data"][subnet] = {"ip":currentIP,"latency":row[2]}
 
         for row in data['ips'][:100]:
             if not row['subnet'] in response['data']: response["data"][row['subnet']] = {"id":row['ID'],"ip":row['ip'],"latency":-1}
