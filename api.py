@@ -76,10 +76,6 @@ def run(app: App):
             if not dbRecord:
                 expiry = int(time.time()) + 1800
                 cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(subnet,ip, expiry))
-                toInsert = []
-                for worker,details in config['workers'].items():
-                    for run in range(int(pings)): toInsert.append([subnet,worker]) 
-                cursor.executemany(f"INSERT INTO results (subnet, worker) VALUES (%s,%s)",toInsert)
                 commit = True
             data = {}
             for row in dbRecord:
