@@ -69,10 +69,6 @@ def run(app: App):
         dbResult = list(cursor)
         for subnet,ip in lookup.items():
             dbRecord = findSubnet(subnet,dbResult)
-            if dbRecord and int(time.time()) > int(dbRecord[0]['expiry']):
-                cursor.execute(f"DELETE FROM requests WHERE subnet = %s",(dbRecord[0]['subnet'],))
-                connection.commit()
-                dbRecord = []
             if not dbRecord:
                 expiry = int(time.time()) + 1800
                 cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(subnet,ip, expiry))
