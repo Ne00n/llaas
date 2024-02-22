@@ -84,7 +84,7 @@ def run(app: App):
                     data[row['worker']].append(0)
                 else: 
                     data[row['worker']].append(float(row['latency']))
-            payload.append({"subnet":row['subnet'],"ip":ip,"results":data})
+            payload.append({"subnet":subnet,"ip":ip,"results":data})
         if commit: connection.commit()
         res.write_status(200)
         res.send(json.dumps(payload, indent=4))
