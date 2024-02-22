@@ -66,18 +66,20 @@ def run(app: App):
         dbResult = list(cursor)
         for subnet,ip in lookup.items():
             dbRecord = findSubnet(subnet,dbResult)
+            data = {}
             if not dbRecord:
                 expiry = int(time.time()) + 1800
                 cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(subnet,ip, expiry))
                 commit = True
-            data = {}
-            for row in dbRecord:
-                if not row['worker'] in data: data[row['worker']] = []
-                if row['latency'] == None:
-                    data[row['worker']].append(0)
-                else: 
-                    data[row['worker']].append(float(row['latency']))
-            payload.append({"subnet":subnet,"ip":ip,"results":data})
+                payload.append({"subnet":subnet,"ip":ip,"results":data})
+            else:
+                for row in dbRecord:
+                    if not row['worker'] in data: data[row['worker']] = []
+                    if row['latency'] == None:
+                        data[row['worker']].append(0)
+                    else: 
+                        data[row['worker']].append(float(row['latency']))
+                payload.append({"subnet":subnet,"ip":ip,"results":data})
         if commit: connection.commit()
         #close connection
         connection.close()
