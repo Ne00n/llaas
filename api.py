@@ -26,14 +26,7 @@ def findSubnet(subnet,dbResult):
         if row['subnet'] == subnet: response.append(row)
     return response
 
-def run(app: App): 
-    # Connect to the database
-    connection = pymysql.connect(host=config['mysql']['host'],
-                                user=config['mysql']['user'],
-                                password=config['mysql']['password'],
-                                database=config['mysql']['database'],
-                                cursorclass=pymysql.cursors.DictCursor)
-    cursor = connection.cursor()
+def run(app: App):
 
     def query(res,request,pings):
         if len(request) > 15000: 
@@ -62,6 +55,10 @@ def run(app: App):
             asndata = asndb.lookup(ip)
             if asndata[0] is None: continue
             lookup[asndata[1]] = ip
+        #open a mysql connection
+        connection = pymysql.connect(host=config['mysql']['host'],user=config['mysql']['user'],password=config['mysql']['password'],database=config['mysql']['database'],cursorclass=pymysql.cursors.DictCursor)
+        cursor = connection.cursor()
+        #execute
         format_strings = ','.join(['%s'] * len(lookup))
         cursor.execute("SELECT requests.subnet,requests.ip,results.worker,results.latency,requests.expiry FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE requests.subnet IN (%s)" % format_strings,
                     tuple(list(lookup)))
@@ -82,6 +79,8 @@ def run(app: App):
                     data[row['worker']].append(float(row['latency']))
             payload.append({"subnet":subnet,"ip":ip,"results":data})
         if commit: connection.commit()
+        #close connection
+        connection.close()
         res.write_status(200)
         res.send(json.dumps(payload, indent=4))
 
@@ -90,8 +89,15 @@ def run(app: App):
         if not validate(payload): 
             res.write_status(413)
             res.send("Invalid Auth.")
+        #open a mysql connection
+        connection = pymysql.connect(host=config['mysql']['host'],user=config['mysql']['user'],password=config['mysql']['password'],database=config['mysql']['database'],cursorclass=pymysql.cursors.DictCursor)
+        cursor = connection.cursor()
+        #execute
         cursor.execute("SELECT requests.* FROM requests LEFT JOIN results ON requests.subnet = results.subnet AND results.worker = %s WHERE results.subnet IS NULL LIMIT 1000",(payload['worker'],))
         ips = list(cursor)
+        #close connection
+        connection.close()
+        #send payload
         res.write_status(200)
         res.send({"ips":ips})
     app.post('/job/get',jobGet)
@@ -103,8 +109,15 @@ def run(app: App):
             res.send("Invalid Auth.")
         toInsert = []
         for subnet,details in payload['data'].items(): toInsert.append([subnet,payload['worker'],details['latency']])
+        #open a mysql connection
+        connection = pymysql.connect(host=config['mysql']['host'],user=config['mysql']['user'],password=config['mysql']['password'],database=config['mysql']['database'],cursorclass=pymysql.cursors.DictCursor)
+        cursor = connection.cursor()
+        #execute
         cursor.executemany(f"INSERT results (subnet, worker, latency) VALUES (%s,%s,%s)",toInsert)
         connection.commit()
+        #close connection
+        connection.close()
+        #send payload
         res.write_status(200)
         res.send({})
     app.post('/job/deliver',jobDeliver)
