@@ -94,7 +94,7 @@ def run(app: App):
         if not validate(payload): 
             res.write_status(413)
             res.send("Invalid Auth.")
-        cursor.execute("SELECT requests.subnet,requests.ip,results.worker FROM requests LEFT JOIN results ON requests.subnet = results.subnet WHERE (NOT results.worker = %s or results.worker IS NULL) GROUP BY requests.subnet LIMIT 1000",(payload['worker'],))
+        cursor.execute("SELECT requests.* FROM requests LEFT JOIN results ON requests.subnet = results.subnet AND results.worker = %s WHERE results.subnet IS NULL LIMIT 1000",(payload['worker'],))
         ips = list(cursor)
         res.write_status(200)
         res.send({"ips":ips})
