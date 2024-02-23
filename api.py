@@ -6,6 +6,7 @@ fullPath = os.path.realpath(__file__).replace("api.py","")
 
 print("Loading config")
 with open(f"{fullPath}configs/api.json") as f: config = json.load(f)
+workers = len(config['workers'])
 print("Loading pyasn")
 asndb = pyasn.pyasn(f"{fullPath}asn.dat")
 print("Preparing regex")
@@ -82,7 +83,12 @@ def run(app: App):
             connection.commit()
         #close connection
         connection.close()
-        res.write_status(202) if toInsert else res.write_status(200)
+        if toInsert:
+            res.write_status(202)
+        elif len(data) == workers:
+            res.write_status(200)
+        else:
+            res.write_status(206)
         res.send(json.dumps(payload, indent=4))
 
     async def jobGet(res, req):
