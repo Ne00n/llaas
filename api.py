@@ -82,7 +82,7 @@ def run(app: App):
             connection.commit()
         #close connection
         connection.close()
-        res.write_status(200)
+        res.write_status(202) if toInsert else res.write_status(200)
         res.send(json.dumps(payload, indent=4))
 
     async def jobGet(res, req):
