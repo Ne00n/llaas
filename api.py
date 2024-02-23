@@ -87,7 +87,7 @@ def run(app: App):
         connection.close()
         if toInsert:
             res.write_status(202)
-        elif len(dataLength) / len(lookup) == workers:
+        elif dataLength / len(lookup) == workers:
             res.write_status(200)
         else:
             res.write_status(206)
