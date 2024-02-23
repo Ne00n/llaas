@@ -64,6 +64,7 @@ def run(app: App):
                     tuple(list(lookup)))
         connection.commit()
         dbResult = list(cursor)
+        dataLength = 0
         for subnet,ip in lookup.items():
             dbRecord = findSubnet(subnet,dbResult)
             data = {}
@@ -77,6 +78,7 @@ def run(app: App):
                     data[row['worker']].append(0)
                 else: 
                     data[row['worker']].append(float(row['latency']))
+            dataLength += len(data)
             payload.append({"subnet":subnet,"ip":ip,"results":data})
         if toInsert:
             cursor.executemany(f"INSERT IGNORE INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(toInsert))
@@ -85,7 +87,7 @@ def run(app: App):
         connection.close()
         if toInsert:
             res.write_status(202)
-        elif len(data) == workers:
+        elif len(dataLength) / len(lookup) == workers:
             res.write_status(200)
         else:
             res.write_status(206)
