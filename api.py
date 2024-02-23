@@ -49,8 +49,7 @@ def run(app: App):
             res.write_status(400)
             res.send("Invalid Amount of Pings.")
             return
-        payload = []
-        lookup,commit = {},False
+        payload,toInsert,lookup = [],[],{}
         for ip in request:
             asndata = asndb.lookup(ip)
             if asndata[0] is None: continue
@@ -69,8 +68,7 @@ def run(app: App):
             data = {}
             if not dbRecord:
                 expiry = int(time.time()) + 1800
-                cursor.execute(f"INSERT INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(subnet,ip, expiry))
-                commit = True
+                toInsert.append([subnet,ip,expiry])
             for row in dbRecord:
                 if row['worker'] == None: continue
                 if not row['worker'] in data: data[row['worker']] = []
@@ -79,7 +77,9 @@ def run(app: App):
                 else: 
                     data[row['worker']].append(float(row['latency']))
             payload.append({"subnet":subnet,"ip":ip,"results":data})
-        if commit: connection.commit()
+        if toInsert:
+            cursor.executemany(f"INSERT IGNORE INTO requests (subnet, ip, expiry) VALUES (%s,%s,%s)",(toInsert))
+            connection.commit()
         #close connection
         connection.close()
         res.write_status(200)
