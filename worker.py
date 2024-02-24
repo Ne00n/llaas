@@ -34,7 +34,7 @@ while runtime < 57:
     print(f"Got {len(data['ips'])} IP's")
     if len(data['ips']) > 0:
         rounds = int(math.ceil(len(data['ips']) / batchSize))
-        for run in rounds:
+        for run in range(rounds):
             prinnt(f"Running batch {run} of {rounds}")
             ips,mapping = [],{}
             for row in data['ips'][:batchSize]:
