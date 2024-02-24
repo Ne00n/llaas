@@ -27,9 +27,8 @@ def call(url,payload):
             print(f"Error {e}")
             error(run)
 
-runtime,batchSize = 0,250
-while runtime < 57:
-    start = time.perf_counter()
+batchSize = 250
+while True:
     data = call(f"{config['api']}/job/get",config)
     print(f"Got {len(data['ips'])} IP's")
     if len(data['ips']) > 0:
@@ -56,9 +55,6 @@ while runtime < 57:
 
             for row in data['ips'][:batchSize]:
                 if not row['subnet'] in response['data']: response["data"][row['subnet']] = {"id":row['ID'],"ip":row['ip'],"latency":-1}
-
         data = call(f"{config['api']}/job/deliver",response)
-    elif runtime < 50: time.sleep(10)
-    elif runtime >= 50: time.sleep(2)
-    done = time.perf_counter()
-    runtime += (done - start)
+    else:
+        time.sleep(10)
