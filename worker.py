@@ -6,13 +6,6 @@ fullPath = os.path.realpath(__file__).replace("worker.py","")
 print("Loading worker.json")
 with open(f"{fullPath}configs/worker.json") as handle: config = json.loads(handle.read())
 
-def error(run):
-    print(f"Retrying {run+1} of 4")
-    if run == 3:
-        print("Aborting, limit reached.")
-        exit()
-    time.sleep(2)
-
 def call(url,payload):
     for run in range(4):
         try:
@@ -22,10 +15,10 @@ def call(url,payload):
                 return response.json()
             else:
                 print(f"Got {response.status_code} with {response.text}")
-                error(run)
         except Exception as e:
             print(f"Error {e}")
-            error(run)
+            time.sleep(5)
+    return {'ips':[]}
 
 batchSize = 250
 while True:
