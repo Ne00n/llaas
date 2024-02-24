@@ -27,7 +27,7 @@ def call(url,payload):
             print(f"Error {e}")
             error(run)
 
-runtime,batchSize = 0,100
+runtime,batchSize = 0,250
 while runtime < 57:
     start = time.perf_counter()
     data = call(f"{config['api']}/job/get",config)
