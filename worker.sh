@@ -7,5 +7,5 @@ cd llaas
 cp configs/worker.example.json configs/worker.json
 useradd llaas -r -d /home/llaas -s /bin/bash
 chown -R llaas:llaas /home/llaas/
-cp configs/llaasWorker /etc/system/systemd/
+cp configs/llaasWorker.service /etc/systemd/system
 systemctl enable llaasWorker && systemctl start llaasWorker
